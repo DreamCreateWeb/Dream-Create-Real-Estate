@@ -1,275 +1,499 @@
 /* =========================================================
-   Dream Create — environment proof-of-concept
-   Procedural, stylized "miniature diorama" environments with
-   real sunlight + soft shadows, under the dreamy sky.
-   ?s=clinic | hood | truck
+   Dream Create — environment lab  (magical stylized / twilight)
+   Art direction: dusk palette, warm glowing windows against cool
+   blue shadows, real HDRI image-based lighting, bloom, haze,
+   soft rounded forms. ?s=clinic | hood | truck
    ========================================================= */
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 
 const KEY = new URLSearchParams(location.search).get("s") || "hood";
 const canvas = document.getElementById("c");
 const rnd = (a, b) => a + Math.random() * (b - a);
-const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const pick = (a) => a[(Math.random() * a.length) | 0];
 
-/* ---------- Renderer ---------- */
+/* ---------------- Renderer ---------------- */
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.08;
+renderer.toneMappingExposure = 0.92;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(new THREE.Color(0xcfe6f2), 60, 240);
+const camera = new THREE.PerspectiveCamera(46, innerWidth / innerHeight, 0.1, 900);
 
-const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 1000);
+/* Twilight atmosphere — cool blue haze so distance melts away */
+const HAZE = new THREE.Color(0x3a3f6b);
+scene.fog = new THREE.FogExp2(HAZE, 0.016);
 
-/* ---------- Lights ---------- */
-const hemi = new THREE.HemisphereLight(0xdbeeff, 0x6a7358, 0.85);
-scene.add(hemi);
-const sun = new THREE.DirectionalLight(0xfff2df, 2.5);
-sun.position.set(38, 54, 26);
-sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
-sun.shadow.camera.near = 1; sun.shadow.camera.far = 200;
-sun.shadow.camera.left = -70; sun.shadow.camera.right = 70;
-sun.shadow.camera.top = 70; sun.shadow.camera.bottom = -70;
-sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.5;
-scene.add(sun);
-const fill = new THREE.DirectionalLight(0xbcd6ff, 0.5);
-fill.position.set(-30, 20, -20); scene.add(fill);
+/* ---------------- Lighting rig ----------------
+   The magic formula: one warm low "sun" (rim/key) + cool blue
+   ambient fill. Warm highlights, cool shadows.                */
+const key = new THREE.DirectionalLight(0xffb579, 2.6);
+key.position.set(-34, 16, 26);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 1; key.shadow.camera.far = 180;
+key.shadow.camera.left = -60; key.shadow.camera.right = 60;
+key.shadow.camera.top = 60; key.shadow.camera.bottom = -60;
+key.shadow.bias = -0.0006; key.shadow.normalBias = 0.6;
+key.shadow.radius = 3;
+scene.add(key);
+scene.add(new THREE.HemisphereLight(0x8fa8ff, 0x1a1a35, 0.55));
 
-/* ---------- Sky dome + clouds ---------- */
-(function sky() {
-  const uni = { top: { value: new THREE.Color(0x2b6fb2) }, mid: { value: new THREE.Color(0x86bfe4) }, bot: { value: new THREE.Color(0xe4f2f8) } };
-  const m = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 20), new THREE.ShaderMaterial({
-    side: THREE.BackSide, depthWrite: false, uniforms: uni,
-    vertexShader: `varying vec3 p; void main(){ p=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-    fragmentShader: `varying vec3 p; uniform vec3 top,mid,bot; void main(){ float h=normalize(p).y; vec3 c=mix(bot,mid,smoothstep(-0.1,0.28,h)); c=mix(c,top,smoothstep(0.25,0.9,h)); gl_FragColor=vec4(c,1.); }`,
-  }));
-  scene.add(m);
-  // clouds
-  const s = 256, cv = document.createElement("canvas"); cv.width = cv.height = s; const x = cv.getContext("2d");
-  for (let i = 0; i < 20; i++) { const r = s * rnd(0.12, 0.32), px = s * rnd(0.2, 0.8), py = s * rnd(0.3, 0.7); const g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, "rgba(255,255,255,0.22)"); g.addColorStop(1, "rgba(255,255,255,0)"); x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, 7); x.fill(); }
-  const fade = x.createRadialGradient(s/2, s/2, s*0.15, s/2, s/2, s*0.5); fade.addColorStop(0, "#fff"); fade.addColorStop(1, "rgba(255,255,255,0)"); x.globalCompositeOperation = "destination-in"; x.fillStyle = fade; x.fillRect(0, 0, s, s);
-  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
-  for (let i = 0; i < 26; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, opacity: rnd(0.4, 0.85), depthWrite: false })); sp.position.set(rnd(-160, 160), rnd(40, 90), rnd(-160, 120)); const sc = rnd(30, 70); sp.scale.set(sc, sc * 0.6, 1); scene.add(sp); }
+/* ---------------- Materials & helpers ---------------- */
+const std = (color, rough = 0.8, metal = 0) =>
+  new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
+
+// warm glowing window — the single biggest "magic" ingredient
+const litGlass = (warm = 0xffbe63, i = 1.1) =>
+  new THREE.MeshStandardMaterial({ color: 0x2a2440, roughness: 0.16, metalness: 0.1, emissive: warm, emissiveIntensity: i });
+const darkGlass = () =>
+  new THREE.MeshStandardMaterial({ color: 0x2b3a5c, roughness: 0.08, metalness: 0.35, emissive: 0x0d1730, emissiveIntensity: 0.5 });
+const glowMat = (c, i = 3) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i, roughness: 0.4 });
+
+function rbox(w, h, d, mat, r = 0.06) {
+  const m = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, Math.min(w, h, d) / 2.2)), mat);
+  m.castShadow = true; m.receiveShadow = true; return m;
+}
+function textTex(txt, bg = "#1d2a4d", fg = "#ffd9a0") {
+  const w = 512, h = 128, c = document.createElement("canvas"); c.width = w; c.height = h;
+  const x = c.getContext("2d"); x.fillStyle = bg; x.fillRect(0, 0, w, h);
+  x.fillStyle = fg; x.font = "600 52px system-ui,sans-serif"; x.textAlign = "center"; x.textBaseline = "middle";
+  x.shadowColor = fg; x.shadowBlur = 26; x.fillText(txt, w / 2, h / 2 + 3);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+/* soft round sprite used for glows, lamp halos, fireflies */
+const GLOW_TEX = (() => {
+  const s = 128, c = document.createElement("canvas"); c.width = c.height = s;
+  const x = c.getContext("2d"), g = x.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(0.25, "rgba(255,255,255,.55)");
+  g.addColorStop(0.55, "rgba(255,255,255,.14)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  x.fillStyle = g; x.fillRect(0, 0, s, s);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
 })();
-
-/* ---------- Material + mesh helpers ---------- */
-const std = (color, rough = 0.85, metal = 0.0) => new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: metal });
-const glass = () => new THREE.MeshStandardMaterial({ color: 0x9cc7dd, roughness: 0.08, metalness: 0.1, emissive: 0x0a1a24, envMapIntensity: 1 });
-function box(w, h, d, mat) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.castShadow = true; m.receiveShadow = true; return m; }
-function textTexture(txt, bg = "#0b2a4a", fg = "#eaf6ff") {
-  const w = 512, h = 128, c = document.createElement("canvas"); c.width = w; c.height = h; const x = c.getContext("2d");
-  x.fillStyle = bg; x.fillRect(0, 0, w, h); x.fillStyle = fg; x.font = "600 54px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(txt, w/2, h/2 + 4);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+function glowSprite(color, size, opacity = 0.85) {
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW_TEX, color, transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  s.scale.set(size, size, 1); return s;
 }
-// window facade texture
-function facadeTexture(cols, rows, wall = "#eef3f6") {
-  const W = 512, H = 512, c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
-  x.fillStyle = wall; x.fillRect(0, 0, W, H);
-  const mx = W * 0.08, my = H * 0.12, gw = (W - mx * 2) / cols, gh = (H - my * 2) / rows;
-  for (let r = 0; r < rows; r++) for (let cc = 0; cc < cols; cc++) {
-    const px = mx + cc * gw + gw * 0.16, py = my + r * gh + gh * 0.16, ww = gw * 0.68, hh = gh * 0.66;
-    const lit = Math.random() < 0.25;
-    const g = x.createLinearGradient(px, py, px, py + hh);
-    if (lit) { g.addColorStop(0, "#ffe9b8"); g.addColorStop(1, "#ffcf82"); }
-    else { g.addColorStop(0, "#bfe0ee"); g.addColorStop(1, "#6f9fb8"); }
-    x.fillStyle = g; x.fillRect(px, py, ww, hh);
-    x.strokeStyle = "#2a3f4d"; x.lineWidth = 2; x.strokeRect(px, py, ww, hh);
-    x.beginPath(); x.moveTo(px + ww/2, py); x.lineTo(px + ww/2, py + hh); x.moveTo(px, py + hh/2); x.lineTo(px + ww, py + hh/2); x.stroke();
+/* glow sprite placed at a position (position is read-only, so set it properly) */
+function glowAt(color, size, opacity, x, y, z) {
+  const s = glowSprite(color, size, opacity); s.position.set(x, y, z); return s;
+}
+
+/* ---------------- Foliage (soft, layered) ---------------- */
+function tree(scale = 1, autumn = false) {
+  const g = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.13 * scale, 0.2 * scale, 1.7 * scale, 7), std(0x4a3b34, 0.95));
+  trunk.castShadow = true; trunk.position.y = 0.85 * scale; g.add(trunk);
+  const pal = autumn ? [0x8a5a3c, 0xa06a3a, 0x6d4a30] : [0x2f5a46, 0x39684e, 0x274c3c, 0x436b4e];
+  const col = pick(pal);
+  for (let i = 0; i < 4; i++) {
+    const r = rnd(0.75, 1.15) * scale * (1 - i * 0.13);
+    const f = new THREE.Mesh(new THREE.IcosahedronGeometry(r, 1), std(col, 1));
+    f.castShadow = true; f.receiveShadow = true;
+    f.position.set(rnd(-0.35, 0.35) * scale, (1.55 + i * 0.55) * scale, rnd(-0.35, 0.35) * scale);
+    f.scale.y = rnd(0.8, 1.0);
+    g.add(f);
   }
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
-}
-function tree(scale = 1) {
-  const g = new THREE.Group();
-  const trunk = box(0.4 * scale, 1.6 * scale, 0.4 * scale, std(0x6b4a2f, 0.9)); trunk.position.y = 0.8 * scale; g.add(trunk);
-  const green = pick([0x4f7a3a, 0x5f8f45, 0x6fa050, 0x477036]);
-  for (let i = 0; i < 3; i++) { const f = new THREE.Mesh(new THREE.IcosahedronGeometry(rnd(0.9, 1.3) * scale, 0), std(green, 0.95)); f.castShadow = true; f.receiveShadow = true; f.position.set(rnd(-0.3, 0.3) * scale, (1.7 + i * 0.7) * scale, rnd(-0.3, 0.3) * scale); g.add(f); }
   return g;
 }
-function car(color = 0xd94f4f) {
+function bush(scale = 1) {
   const g = new THREE.Group();
-  const body = box(2.1, 0.6, 1.05, std(color, 0.4, 0.2)); body.position.y = 0.55; g.add(body);
-  const cabin = box(1.1, 0.5, 0.95, glass()); cabin.position.set(-0.1, 1.02, 0); g.add(cabin);
-  const wheelG = new THREE.CylinderGeometry(0.28, 0.28, 0.2, 16); const wm = std(0x1a1a1e, 0.7);
-  [[0.7, 0.55], [0.7, -0.55], [-0.7, 0.55], [-0.7, -0.55]].forEach(([x, z]) => { const w = new THREE.Mesh(wheelG, wm); w.rotation.x = Math.PI/2; w.position.set(x, 0.28, z); w.castShadow = true; g.add(w); });
+  for (let i = 0; i < 3; i++) {
+    const b = new THREE.Mesh(new THREE.IcosahedronGeometry(rnd(0.3, 0.5) * scale, 1), std(pick([0x2c5442, 0x35604a]), 1));
+    b.castShadow = true; b.receiveShadow = true;
+    b.position.set(rnd(-0.3, 0.3) * scale, rnd(0.22, 0.38) * scale, rnd(-0.3, 0.3) * scale);
+    g.add(b);
+  }
   return g;
 }
-function groundPlane(size, color) { const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size), std(color, 1)); m.rotation.x = -Math.PI/2; m.receiveShadow = true; return m; }
-function roadStrip(w, l, mat) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mat); m.rotation.x = -Math.PI/2; m.position.y = 0.02; m.receiveShadow = true; return m; }
 
-/* ---------- House (gable-roof) ---------- */
+/* ---------------- Street lamp (warm pool of light) ---------------- */
+const lampLights = [];
+function streetLamp(h = 4.4) {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.09, h, 8), std(0x1d2233, 0.6, 0.5));
+  pole.castShadow = true; pole.position.y = h / 2; g.add(pole);
+  const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.7, 6), std(0x1d2233, 0.6, 0.5));
+  arm.rotation.z = Math.PI / 2; arm.position.set(0.32, h, 0); g.add(arm);
+  const head = rbox(0.44, 0.2, 0.34, glowMat(0xffc06a, 1.8), 0.07);
+  head.position.set(0.62, h - 0.1, 0); head.castShadow = false; g.add(head);
+  g.add(glowAt(0xffc06a, 2.4, 0.34, 0.62, h - 0.12, 0));
+  const l = new THREE.PointLight(0xffb268, 5.5, 13, 2);
+  l.position.set(0.62, h - 0.3, 0); g.add(l); lampLights.push(l);
+  return g;
+}
+
+/* ---------------- Vehicles ---------------- */
+function car(color = 0xc94f5a) {
+  const g = new THREE.Group();
+  const body = rbox(2.15, 0.52, 1.02, std(color, 0.35, 0.35), 0.16);
+  body.position.y = 0.56; g.add(body);
+  const cabin = rbox(1.18, 0.46, 0.94, darkGlass(), 0.16);
+  cabin.position.set(-0.12, 1.0, 0); g.add(cabin);
+  // headlights + tail glow
+  [[1.03, 0.3], [1.03, -0.3]].forEach(([x, z]) => {
+    const hl = rbox(0.08, 0.12, 0.2, glowMat(0xfff0c8, 1.6), 0.04); hl.position.set(x, 0.6, z); g.add(hl);
+  });
+  const beam = glowSprite(0xffe9b0, 0.9, 0.28); beam.position.set(1.25, 0.6, 0); g.add(beam);
+  [[-1.05, 0.32], [-1.05, -0.32]].forEach(([x, z]) => {
+    const t = rbox(0.06, 0.1, 0.18, glowMat(0xff5a4a, 2.4), 0.03); t.position.set(x, 0.62, z); g.add(t);
+  });
+  const wg = new THREE.CylinderGeometry(0.27, 0.27, 0.19, 14), wm = std(0x14151c, 0.85);
+  [[0.68, 0.53], [0.68, -0.53], [-0.68, 0.53], [-0.68, -0.53]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(wg, wm); w.rotation.x = Math.PI / 2; w.position.set(x, 0.28, z); w.castShadow = true; g.add(w);
+  });
+  return g;
+}
+
+/* ---------------- House (charming, layered silhouette) ---------------- */
+const WALLS = [0xe8dcc8, 0xdcd0bc, 0xcfd8dc, 0xe0cfc4, 0xd2dbd0, 0xe6d9d2];
+const ROOFS = [0x4a3f52, 0x3f4a5c, 0x533f43, 0x39434f, 0x4d4340];
 function gableRoof(w, h, d, mat) {
-  const s = new THREE.Shape(); s.moveTo(-w/2, 0); s.lineTo(w/2, 0); s.lineTo(0, h); s.lineTo(-w/2, 0);
-  const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false }); g.translate(0, 0, -d/2);
+  const s = new THREE.Shape();
+  s.moveTo(-w / 2, 0); s.lineTo(w / 2, 0); s.lineTo(0, h); s.lineTo(-w / 2, 0);
+  const g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: true, bevelThickness: 0.06, bevelSize: 0.06, bevelSegments: 1 });
+  g.translate(0, 0, -d / 2);
   const m = new THREE.Mesh(g, mat); m.castShadow = true; m.receiveShadow = true; return m;
+}
+function windowPane(w, h, lit) {
+  const g = new THREE.Group();
+  const frame = rbox(w + 0.14, h + 0.14, 0.1, std(0xf3ece0, 0.75), 0.03);
+  const pane = rbox(w, h, 0.16, lit ? litGlass(pick([0xffbe63, 0xffcf86, 0xffab55]), rnd(0.9, 1.5)) : darkGlass(), 0.02);
+  g.add(frame, pane);
+  if (lit) { const s = glowSprite(0xffc074, Math.max(w, h) * 1.5, 0.16); s.position.z = 0.3; g.add(s); }
+  return g;
 }
 function house() {
   const g = new THREE.Group();
-  const w = rnd(4, 5.4), d = rnd(4.4, 5.8), h = rnd(2.4, 3.2);
-  const wall = pick([0xf1e7d6, 0xe8d5c0, 0xdfe6e2, 0xf0dcdc, 0xd9e3ea, 0xe9e2d0]);
-  const roofC = pick([0x8a5a44, 0x5a6b6e, 0x7a4b3e, 0x44525a, 0x6a4636]);
-  const body = box(w, h, d, std(wall, 0.9)); body.position.y = h/2; g.add(body);
-  const roof = gableRoof(w + 0.5, rnd(1.5, 2.2), d + 0.5, std(roofC, 0.85)); roof.position.y = h; g.add(roof);
-  // door
-  const door = box(0.95, 1.7, 0.12, std(pick([0x3a5a4a, 0x5a3a3a, 0x394a5a, 0x6b4a2f]), 0.6)); door.position.set(rnd(-w*0.2, w*0.2), 0.85, d/2 + 0.02); g.add(door);
-  // windows (front + sides)
-  const winMat = glass(), frame = std(0xffffff, 0.7);
-  const addWin = (x, y, z, ry) => { const fr = box(1.05, 1.05, 0.1, frame); fr.position.set(x, y, z); fr.rotation.y = ry; g.add(fr); const gl = box(0.85, 0.85, 0.14, winMat); gl.position.set(x, y, z); gl.rotation.y = ry; g.add(gl); };
-  addWin(-w*0.3, 1.5, d/2 + 0.02, 0); addWin(w*0.3, 1.5, d/2 + 0.02, 0);
-  addWin(w/2 + 0.02, 1.5, 0, Math.PI/2);
+  const w = rnd(4.2, 5.4), d = rnd(4.6, 5.8), h = rnd(2.5, 3.1);
+  const wall = pick(WALLS), roofC = pick(ROOFS);
+  const body = rbox(w, h, d, std(wall, 0.92), 0.09); body.position.y = h / 2; g.add(body);
+  const roof = gableRoof(w + 0.65, rnd(1.7, 2.3), d + 0.5, std(roofC, 0.9)); roof.position.y = h; g.add(roof);
+
+  // porch — the detail that makes it read as a *home*
+  const pd = 1.5;
+  const porchFloor = rbox(w * 0.72, 0.16, pd, std(0xcbbfae, 0.95), 0.03);
+  porchFloor.position.set(0, 0.14, d / 2 + pd / 2); g.add(porchFloor);
+  const porchRoof = rbox(w * 0.78, 0.14, pd + 0.25, std(roofC, 0.9), 0.04);
+  porchRoof.position.set(0, 2.3, d / 2 + pd / 2); g.add(porchRoof);
+  [-w * 0.3, w * 0.3].forEach((x) => {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 2.1, 7), std(0xf0e8dc, 0.8));
+    p.castShadow = true; p.position.set(x, 1.2, d / 2 + pd - 0.15); g.add(p);
+  });
+  // porch lantern
+  const lant = rbox(0.16, 0.24, 0.16, glowMat(0xffb765, 1.8), 0.04);
+  lant.position.set(0.75, 2.02, d / 2 + 0.14); g.add(lant);
+  g.add(glowAt(0xffb765, 1.0, 0.3, 0.75, 2.0, d / 2 + 0.16));
+
+  // door (warm spill from inside)
+  const door = rbox(0.95, 1.85, 0.14, std(pick([0x3d5348, 0x5a3a3c, 0x36445c]), 0.6), 0.04);
+  door.position.set(0, 0.95, d / 2 + 0.06); g.add(door);
+  const dGlow = rbox(0.6, 0.12, 0.1, glowMat(0xffc27a, 1.2), 0.02);
+  dGlow.position.set(0, 1.78, d / 2 + 0.1); g.add(dGlow);
+
+  // windows — most lit at dusk
+  const wins = [
+    [-w * 0.3, 1.5, d / 2 + 0.06, 0], [w * 0.3, 1.5, d / 2 + 0.06, 0],
+    [w / 2 + 0.06, 1.5, -d * 0.18, Math.PI / 2], [-w / 2 - 0.06, 1.5, d * 0.18, -Math.PI / 2],
+  ];
+  wins.forEach(([x, y, z, ry]) => {
+    const p = windowPane(0.82, 0.92, Math.random() < 0.72);
+    p.position.set(x, y, z); p.rotation.y = ry; g.add(p);
+  });
+  // dormer
+  if (Math.random() < 0.55) {
+    const dw = 1.15;
+    const db = rbox(dw, 0.85, 0.9, std(wall, 0.92), 0.05);
+    db.position.set(rnd(-0.7, 0.7), h + 0.75, d * 0.16); g.add(db);
+    const dr = gableRoof(dw + 0.3, 0.6, 1.0, std(roofC, 0.9));
+    dr.position.set(db.position.x, h + 1.17, d * 0.16); g.add(dr);
+    const dp = windowPane(0.5, 0.5, Math.random() < 0.7);
+    dp.position.set(db.position.x, h + 0.78, d * 0.16 + 0.5); g.add(dp);
+  }
   // chimney
-  const ch = box(0.5, 1.2, 0.5, std(roofC, 0.9)); ch.position.set(w*0.28, h + 1.1, -d*0.1); g.add(ch);
+  const ch = rbox(0.5, 1.5, 0.5, std(0x59484a, 0.95), 0.04);
+  ch.position.set(w * 0.3, h + 1.25, -d * 0.2); g.add(ch);
   return g;
 }
 
+/* ---------------- Ground helpers ---------------- */
+function ground(size, color) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size * 3, size * 3, 1, 1), std(color, 1));
+  m.rotation.x = -Math.PI / 2; m.receiveShadow = true; return m;
+}
+function plane(w, l, mat, y = 0.02) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mat);
+  m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = true; return m;
+}
+
+/* ---------------- Distant hills ----------------
+   Layered silhouettes that dissolve the horizon seam and give
+   the world depth — a signature of stylized dusk scenes.      */
+function hills() {
+  const g = new THREE.Group();
+  const layers = [
+    { r: 210, h: 26, c: 0x3a3f6b, o: 0.95, y: -2 },
+    { r: 165, h: 20, c: 0x333a63, o: 1, y: -2 },
+    { r: 125, h: 15, c: 0x2b3157, o: 1, y: -2 },
+  ];
+  layers.forEach(({ r, h, c, o, y }, li) => {
+    const seg = 90, pts = [];
+    for (let i = 0; i <= seg; i++) {
+      const a = (i / seg) * Math.PI * 2;
+      const n = Math.sin(a * (2 + li) + li * 1.7) * 0.5 + Math.sin(a * (5 + li * 2) + li) * 0.28 + Math.sin(a * 9 + li * 3) * 0.14;
+      pts.push(new THREE.Vector3(Math.cos(a) * r, y + h * (0.55 + n * 0.45), Math.sin(a) * r));
+    }
+    const geo = new THREE.BufferGeometry();
+    const verts = [];
+    for (let i = 0; i < seg; i++) {
+      const p0 = pts[i], p1 = pts[i + 1];
+      const b0 = new THREE.Vector3(p0.x, -40, p0.z), b1 = new THREE.Vector3(p1.x, -40, p1.z);
+      verts.push(p0.x, p0.y, p0.z, b0.x, b0.y, b0.z, b1.x, b1.y, b1.z);
+      verts.push(p0.x, p0.y, p0.z, b1.x, b1.y, b1.z, p1.x, p1.y, p1.z);
+    }
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c, side: THREE.DoubleSide, transparent: true, opacity: o, fog: false, depthWrite: true }));
+    g.add(m);
+  });
+  scene.add(g); return g;
+}
+
+/* ---------------- Fireflies / dust motes ---------------- */
+function motes(count, spread, y0, y1, color = 0xffd79a) {
+  const g = new THREE.Group();
+  for (let i = 0; i < count; i++) {
+    const s = glowSprite(color, rnd(0.18, 0.4), rnd(0.4, 0.9));
+    s.position.set(rnd(-spread, spread), rnd(y0, y1), rnd(-spread, spread));
+    s.userData = { phase: Math.random() * 7, amp: rnd(0.3, 1.1), base: s.position.clone() };
+    g.add(s);
+  }
+  scene.add(g); return g;
+}
+
 /* ========================================================
-   SCENE BUILDERS
+   SCENES
    ======================================================== */
 function buildHood() {
-  scene.add(groundPlane(300, 0x84a45f)); // grass
-  const roadMat = std(0x3f444c, 0.95);
-  // main street + cross street
-  scene.add(roadStrip(7, 120, roadMat));
-  const cross = roadStrip(7, 120, roadMat); cross.rotation.z = Math.PI/2; scene.add(cross);
-  // sidewalks
-  const swMat = std(0xb9beba, 0.95);
-  [-5.2, 5.2].forEach((x) => { const s = roadStrip(1.4, 120, swMat); s.position.x = x; s.position.y = 0.03; scene.add(s); });
-  // lane dashes
-  const dash = std(0xf2e9c0, 0.9);
-  for (let z = -54; z <= 54; z += 8) { const dsh = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 3), dash); dsh.rotation.x = -Math.PI/2; dsh.position.set(0, 0.04, z); scene.add(dsh); }
-  // houses along both sides of the main street, facing it
+  scene.add(ground(400, 0x2f4636));
+  hills();
+  const roadMat = std(0x24263a, 0.82);
+  scene.add(plane(7.5, 150, roadMat, 0.02));
+  const cross = plane(7.5, 150, roadMat, 0.021); cross.rotation.z = Math.PI / 2; scene.add(cross);
+  const swMat = std(0x5a5f70, 0.9);
+  [-5.4, 5.4].forEach((x) => { const s = plane(1.5, 150, swMat, 0.05); s.position.x = x; scene.add(s); });
+  const dashMat = glowMat(0xd8c48a, 0.5);
+  for (let z = -60; z <= 60; z += 9) {
+    const d = new THREE.Mesh(new THREE.PlaneGeometry(0.26, 3), dashMat);
+    d.rotation.x = -Math.PI / 2; d.position.set(0, 0.06, z); scene.add(d);
+  }
+
   const lots = [];
-  for (let z = -44; z <= 44; z += 12.5) { lots.push({ x: -13, z, ry: Math.PI/2 }); lots.push({ x: 13, z, ry: -Math.PI/2 }); }
+  for (let z = -46; z <= 46; z += 13) { lots.push({ x: -13.5, z, ry: Math.PI / 2 }); lots.push({ x: 13.5, z, ry: -Math.PI / 2 }); }
   lots.forEach((l) => {
-    if (Math.abs(l.z) < 6) return; // keep the intersection clear
+    if (Math.abs(l.z) < 7) return;
     const h = house(); h.position.set(l.x, 0, l.z); h.rotation.y = l.ry; scene.add(h);
-    // driveway
-    const dv = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 5), std(0x9a9ea1, 0.95)); dv.rotation.x = -Math.PI/2; dv.position.set(l.x + (l.x > 0 ? -3.4 : 3.4), 0.03, l.z + 3); scene.add(dv);
-    if (Math.random() < 0.5) { const c = car(pick([0xd94f4f, 0x4f74d9, 0x2b2f36, 0xe0e3e6, 0x4faf7a])); c.position.set(l.x + (l.x > 0 ? -3.4 : 3.4), 0, l.z + 3); c.rotation.y = Math.PI/2; scene.add(c); }
-    // yard trees
-    for (let i = 0; i < 2; i++) { const t = tree(rnd(0.8, 1.2)); t.position.set(l.x + rnd(-2.5, 2.5) + (l.x > 0 ? 3 : -3), 0, l.z + rnd(-4, 4)); scene.add(t); }
+    const side = l.x > 0 ? -1 : 1;
+    const dv = plane(2.5, 5.5, std(0x3d4152, 0.9), 0.04);
+    dv.position.set(l.x + side * 3.6, 0.04, l.z + 3.2); scene.add(dv);
+    if (Math.random() < 0.55) {
+      const c = car(pick([0xc94f5a, 0x44618f, 0x2b2f3c, 0xd8d3c8, 0x3f7a63]));
+      c.position.set(l.x + side * 3.6, 0, l.z + 3.2); c.rotation.y = Math.PI / 2; scene.add(c);
+    }
+    for (let i = 0; i < 2; i++) { const t = tree(rnd(0.85, 1.25), Math.random() < 0.25); t.position.set(l.x + side * rnd(2, 5), 0, l.z + rnd(-5, 5)); scene.add(t); }
+    const b = bush(rnd(0.9, 1.3)); b.position.set(l.x + side * 3.0, 0, l.z - 2.4); scene.add(b);
   });
-  // street trees along sidewalks
-  for (let z = -50; z <= 50; z += 10) { [-6.4, 6.4].forEach((x) => { const t = tree(rnd(0.9, 1.3)); t.position.set(x, 0, z + 2); scene.add(t); }); }
-  // a couple cars on the road
-  [ [0.0, -20, 0], [0.0, 24, Math.PI] ].forEach(([x, z, ry]) => { const c = car(pick([0xd94f4f, 0x4f74d9, 0xe0e3e6])); c.position.set(x - 1.6, 0, z); c.rotation.y = ry; scene.add(c); });
-  camera.position.set(46, 34, 52); camera.lookAt(0, 1, 0);
-  return { title: "Neighborhood — Dream Create Real Estate", sub: "aerial orbit · procedural houses, streets, trees & cars with soft shadows" };
+
+  // street lamps + trees along the sidewalks
+  for (let z = -45; z <= 45; z += 15) {
+    const a = streetLamp(); a.position.set(-6.6, 0, z); a.rotation.y = Math.PI; scene.add(a);
+    const b = streetLamp(); b.position.set(6.6, 0, z + 7.5); scene.add(b);
+  }
+  for (let z = -50; z <= 50; z += 11) {
+    [-8.4, 8.4].forEach((x) => { const t = tree(rnd(0.9, 1.35)); t.position.set(x, 0, z + 3.5); scene.add(t); });
+  }
+  // moving cars on the road
+  const traffic = [];
+  [[-1.8, -22, 0], [1.8, 26, Math.PI]].forEach(([x, z, ry]) => {
+    const c = car(pick([0xc94f5a, 0x44618f, 0xd8d3c8])); c.position.set(x, 0, z); c.rotation.y = ry;
+    scene.add(c); traffic.push({ c, dir: ry === 0 ? 1 : -1 });
+  });
+
+  motes(120, 45, 1, 12);
+  camera.position.set(40, 24, 44);
+  return { title: "Neighborhood — Dream Create Real Estate", sub: "twilight · glowing windows, street lamps, porches & haze", target: new THREE.Vector3(0, 2, 0), traffic };
 }
 
 function buildClinic() {
-  scene.add(groundPlane(300, 0x8aa863));
-  // lot / concrete
-  const lot = new THREE.Mesh(new THREE.PlaneGeometry(48, 40), std(0xc7c9c4, 0.96)); lot.rotation.x = -Math.PI/2; lot.position.y = 0.01; lot.receiveShadow = true; scene.add(lot);
-  // parking area
-  const park = new THREE.Mesh(new THREE.PlaneGeometry(30, 12), std(0x45484d, 0.96)); park.rotation.x = -Math.PI/2; park.position.set(0, 0.02, 12); park.receiveShadow = true; scene.add(park);
-  const line = std(0xe8e2c8, 0.9);
-  for (let i = -4; i <= 4; i++) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 5), line); l.rotation.x = -Math.PI/2; l.position.set(i * 3, 0.03, 12); scene.add(l); }
+  scene.add(ground(400, 0x2f4636));
+  hills();
+  scene.add(plane(52, 44, std(0x3a3f52, 0.92), 0.02));
+  scene.add(plane(30, 13, std(0x24263a, 0.85), 0.03).translateZ(0));
+  const park = plane(30, 13, std(0x24263a, 0.85), 0.031); park.position.z = 13; scene.add(park);
+  const lineMat = glowMat(0xcbb98a, 0.4);
+  for (let i = -4; i <= 4; i++) { const l = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 5.4), lineMat); l.rotation.x = -Math.PI / 2; l.position.set(i * 3.2, 0.05, 13); scene.add(l); }
 
   const b = new THREE.Group();
-  // ground floor — glass
-  const g0 = box(14, 3.4, 9, glass()); g0.position.y = 1.7; b.add(g0);
-  // white frame columns on ground floor
-  const colMat = std(0xf3f5f6, 0.7);
-  [-7, -3.5, 0, 3.5, 7].forEach((x) => { const c = box(0.5, 3.4, 0.4, colMat); c.position.set(x, 1.7, 4.55); b.add(c); });
-  // upper floors — white with window facade
-  const fac = facadeTexture(7, 2, "#eef3f6");
-  const facMat = new THREE.MeshStandardMaterial({ map: fac, roughness: 0.7 });
-  const wallMat = std(0xeef3f6, 0.8);
-  const upper = new THREE.Mesh(new THREE.BoxGeometry(14, 6.5, 9), [wallMat, wallMat, wallMat, wallMat, facMat, facMat]);
-  upper.castShadow = true; upper.receiveShadow = true; upper.position.y = 3.4 + 3.25; b.add(upper);
-  // parapet
-  const par = box(14.4, 0.5, 9.4, std(0xdfe4e6, 0.8)); par.position.y = 3.4 + 6.5 + 0.25; b.add(par);
-  // rooftop units
-  [[-3, 2], [3, -1]].forEach(([x, z]) => { const u = box(2.4, 1, 2, std(0xb9beba, 0.9)); u.position.set(x, 3.4 + 6.5 + 0.7, z); b.add(u); });
-  // entrance canopy
-  const can = box(5, 0.3, 2.4, std(0xdfe4e6, 0.7)); can.position.set(0, 3.1, 5.5); b.add(can);
-  // doors
-  const dr = box(2.4, 2.6, 0.2, glass()); dr.position.set(0, 1.3, 4.6); b.add(dr);
-  // sign
-  const signMat = new THREE.MeshStandardMaterial({ map: textTexture("Dream Dental", "#0b3a63", "#eaf6ff"), emissive: 0x11324f, emissiveIntensity: 0.4, roughness: 0.5 });
-  const sign = new THREE.Mesh(new THREE.BoxGeometry(6, 1.2, 0.3), signMat); sign.position.set(0, 8.2, 4.7); sign.castShadow = true; b.add(sign);
+  // glass ground floor, glowing from within
+  const g0 = rbox(15, 3.6, 9.5, darkGlass(), 0.12); g0.position.y = 1.8; b.add(g0);
+  // warm interior spill — a few glowing strips instead of one huge emissive slab
+  [-5.2, -1.7, 1.8, 5.3].forEach((x) => {
+    const strip = rbox(2.6, 1.5, 0.12, litGlass(0xffcf8a, 0.9), 0.04);
+    strip.position.set(x, 1.9, 4.82); b.add(strip);
+  });
+  b.add(glowAt(0xffcf8a, 7, 0.16, 0, 1.6, 5.4));
+  const colMat = std(0xe9e4da, 0.6);
+  [-7.2, -3.6, 0, 3.6, 7.2].forEach((x) => { const c = rbox(0.42, 3.6, 0.42, colMat, 0.06); c.position.set(x, 1.8, 4.86); b.add(c); });
+  // upper floors
+  const upper = rbox(15, 6.8, 9.5, std(0xdfe3e8, 0.75), 0.12); upper.position.y = 3.6 + 3.4; b.add(upper);
+  // window grid, most lit
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 6; c++) {
+    const p = windowPane(1.25, 1.35, Math.random() < 0.66);
+    p.position.set(-6.4 + c * 2.55, 5.4 + r * 2.7, 4.82); b.add(p);
+    const p2 = windowPane(1.25, 1.35, Math.random() < 0.5);
+    p2.position.set(7.56, 5.4 + r * 2.7, -3.2 + c * 1.3); p2.rotation.y = Math.PI / 2; b.add(p2);
+  }
+  const par = rbox(15.5, 0.45, 10, std(0xcfd5dc, 0.8), 0.06); par.position.y = 3.6 + 6.8 + 0.22; b.add(par);
+  [[-3.6, 2], [3.4, -1.4]].forEach(([x, z]) => { const u = rbox(2.4, 1.05, 2.1, std(0x8f96a3, 0.9), 0.08); u.position.set(x, 3.6 + 6.8 + 0.75, z); b.add(u); });
+  // canopy + doors
+  const can = rbox(5.4, 0.28, 2.6, std(0xd8dde4, 0.7), 0.06); can.position.set(0, 3.25, 5.9); b.add(can);
+  b.add(glowAt(0xffd9a0, 3, 0.22, 0, 2.9, 6.0));
+  const dr = rbox(2.6, 2.7, 0.18, litGlass(0xffd9a0, 1.2), 0.05); dr.position.set(0, 1.35, 4.86); b.add(dr);
+  // sign — glowing
+  const signMat = new THREE.MeshStandardMaterial({ map: textTex("Dream Dental", "#16224a", "#ffd9a0"), emissive: 0xffc27a, emissiveIntensity: 1.5, roughness: 0.5 });
+  const sign = new THREE.Mesh(new RoundedBoxGeometry(6.4, 1.3, 0.28, 2, 0.1), signMat);
+  sign.position.set(0, 8.6, 4.95); sign.castShadow = true; b.add(sign);
+  b.add(glowAt(0xffc27a, 4.5, 0.22, 0, 8.6, 5.2));
   scene.add(b);
 
-  // landscaping
-  for (let i = 0; i < 8; i++) { const t = tree(rnd(1, 1.5)); t.position.set(rnd(-20, 20), 0, rnd(-16, -6)); scene.add(t); }
-  [-9, -6, 6, 9].forEach((x, i) => { const c = car(pick([0xd94f4f, 0x4f74d9, 0x2b2f36, 0xe0e3e6])); c.position.set(x, 0, 12); c.rotation.y = 0; scene.add(c); });
-  // sidewalk
-  const sw = new THREE.Mesh(new THREE.PlaneGeometry(16, 2.4), std(0xc9cdc8, 0.95)); sw.rotation.x = -Math.PI/2; sw.position.set(0, 0.02, 7.5); scene.add(sw);
-
-  camera.position.set(20, 11, 22); camera.lookAt(0, 4, 0);
-  return { title: "Dental clinic — DreamCRM", sub: "glass ground floor, window facade, signage, parking & landscaping" };
+  for (let i = 0; i < 10; i++) { const t = tree(rnd(1.1, 1.7)); t.position.set(rnd(-22, 22), 0, rnd(-18, -7)); scene.add(t); }
+  [-9.6, -6.4, 6.4, 9.6].forEach((x) => { const c = car(pick([0xc94f5a, 0x44618f, 0x2b2f3c, 0xd8d3c8])); c.position.set(x, 0, 13); c.rotation.y = Math.PI / 2; scene.add(c); });
+  [[-13, 6], [13, 6]].forEach(([x, z]) => { const l = streetLamp(5); l.position.set(x, 0, z); scene.add(l); });
+  motes(70, 26, 1, 10);
+  camera.position.set(19, 10, 24);
+  return { title: "Dental clinic — DreamCRM", sub: "twilight · glowing interior, lit signage, lamp-lit lot", target: new THREE.Vector3(0, 4.4, 0) };
 }
 
 function buildTruck() {
-  scene.add(groundPlane(300, 0x8aa863));
-  // road
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(300, 16), std(0x3f444c, 0.95)); road.rotation.x = -Math.PI/2; road.position.y = 0.01; road.receiveShadow = true; scene.add(road);
-  const line = std(0xf2e9c0, 0.9);
-  for (let x = -60; x <= 60; x += 8) { const l = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.3), line); l.rotation.x = -Math.PI/2; l.position.set(x, 0.03, 0); scene.add(l); }
+  scene.add(ground(400, 0x2f4636));
+  hills();
+  scene.add(plane(300, 17, std(0x24263a, 0.82), 0.02));
+  const dashMat = glowMat(0xd8c48a, 0.5);
+  for (let x = -70; x <= 70; x += 9) { const l = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.26), dashMat); l.rotation.x = -Math.PI / 2; l.position.set(x, 0.05, 0); scene.add(l); }
 
   const g = new THREE.Group();
-  const orange = std(0xe98a2b, 0.5, 0.15), dark = std(0x2a2d33, 0.6);
-  // chassis
-  const chassis = box(9, 0.5, 2.4, dark); chassis.position.y = 0.95; g.add(chassis);
-  // cab
-  const cab = box(2.6, 2.2, 2.5, orange); cab.position.set(3, 2.1, 0); g.add(cab);
-  const hood = box(1.4, 1.2, 2.5, orange); hood.position.set(4.9, 1.6, 0); g.add(hood);
-  // windshield + windows
-  const ws = box(0.2, 1.1, 2.2, glass()); ws.position.set(4.35, 2.5, 0); g.add(ws);
-  [1.26, -1.26].forEach((z) => { const sw = box(2.2, 1.0, 0.14, glass()); sw.position.set(3, 2.5, z); g.add(sw); });
-  // flatbed
-  const bed = box(5.4, 0.35, 2.5, std(0xcfd3d6, 0.6, 0.3)); bed.position.set(-1.6, 1.4, 0); g.add(bed);
-  const bedRail = box(5.4, 0.4, 0.15, dark); bedRail.position.set(-1.6, 1.75, 1.2); g.add(bedRail); const bedRail2 = bedRail.clone(); bedRail2.position.z = -1.2; g.add(bedRail2);
-  // boom / hook
-  const boom = box(0.4, 0.4, 0.4, dark); boom.scale.set(1, 6, 1); boom.position.set(0.6, 2.6, 0); boom.rotation.z = -0.5; g.add(boom);
-  const hook = box(0.3, 0.6, 0.3, std(0x9a9ea1, 0.5, 0.5)); hook.position.set(-1.4, 2.0, 0); g.add(hook);
-  // door sign
-  const dsign = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.9, 2.0), new THREE.MeshStandardMaterial({ map: textTexture("DREAM TOWING", "#e98a2b", "#2a2d33"), roughness: 0.5 })); dsign.position.set(1.68, 2.0, 0); g.add(dsign);
-  // wheels
-  const wheelG = new THREE.CylinderGeometry(0.62, 0.62, 0.5, 20); const wm = std(0x17181c, 0.7);
-  const hub = std(0xbfc3c6, 0.4, 0.6);
-  [[3.4, 1.3], [3.4, -1.3], [-2.2, 1.3], [-2.2, -1.3], [-3.6, 1.3], [-3.6, -1.3]].forEach(([x, z]) => {
-    const w = new THREE.Mesh(wheelG, wm); w.rotation.x = Math.PI/2; w.position.set(x, 0.62, z); w.castShadow = true; g.add(w);
-    const hb = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.24, 0.52, 12), hub); hb.rotation.x = Math.PI/2; hb.position.set(x, 0.62, z); g.add(hb);
+  const orange = std(0xd97a2b, 0.42, 0.3), dark = std(0x1e2230, 0.6, 0.3);
+  const chassis = rbox(9, 0.5, 2.4, dark, 0.07); chassis.position.y = 0.95; g.add(chassis);
+  const cab = rbox(2.7, 2.25, 2.5, orange, 0.18); cab.position.set(2.9, 2.12, 0); g.add(cab);
+  const hood = rbox(1.5, 1.2, 2.45, orange, 0.16); hood.position.set(4.9, 1.6, 0); g.add(hood);
+  const ws = rbox(0.16, 1.15, 2.2, darkGlass(), 0.05); ws.position.set(4.28, 2.55, 0); g.add(ws);
+  [1.28, -1.28].forEach((z) => { const w = rbox(2.2, 1.0, 0.12, darkGlass(), 0.05); w.position.set(2.9, 2.55, z); g.add(w); });
+  // flatbed + rails
+  const bed = rbox(5.4, 0.32, 2.5, std(0xb9bfc6, 0.5, 0.5), 0.05); bed.position.set(-1.7, 1.4, 0); g.add(bed);
+  [1.22, -1.22].forEach((z) => { const r = rbox(5.4, 0.36, 0.14, dark, 0.04); r.position.set(-1.7, 1.74, z); g.add(r); });
+  // boom
+  const boom = rbox(2.6, 0.34, 0.34, dark, 0.08); boom.position.set(0.7, 2.5, 0); boom.rotation.z = 0.55; g.add(boom);
+  const hook = rbox(0.26, 0.5, 0.26, std(0x9aa1ab, 0.4, 0.7), 0.05); hook.position.set(-0.5, 2.0, 0); g.add(hook);
+  // amber beacon — the magic touch
+  const beacon = rbox(0.7, 0.16, 0.35, glowMat(0xffa32b, 4), 0.06); beacon.position.set(2.9, 3.3, 0); g.add(beacon);
+  g.add(glowAt(0xffa32b, 2.8, 0.5, 2.9, 3.35, 0));
+  const beaconLight = new THREE.PointLight(0xffa02b, 7, 22, 2); beaconLight.position.set(2.9, 3.5, 0); g.add(beaconLight);
+  // headlights
+  [[5.6, 0.8], [5.6, -0.8]].forEach(([x, z]) => {
+    const hl = rbox(0.14, 0.26, 0.4, glowMat(0xfff2d0, 2), 0.05); hl.position.set(x, 1.5, z); g.add(hl);
+    g.add(glowAt(0xfff0cc, 1.5, 0.3, x + 0.3, 1.5, z));
   });
-  g.position.set(-2, 0, 0); scene.add(g);
+  const dsign = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.85), new THREE.MeshStandardMaterial({ map: textTex("DREAM TOWING", "#d97a2b", "#231a10"), roughness: 0.5 }));
+  dsign.position.set(1.53, 2.05, 0); dsign.rotation.y = -Math.PI / 2; g.add(dsign);
+  const wg = new THREE.CylinderGeometry(0.62, 0.62, 0.5, 18), wm = std(0x14151c, 0.85), hub = std(0x9aa1ab, 0.35, 0.7);
+  [[3.4, 1.3], [3.4, -1.3], [-2.2, 1.3], [-2.2, -1.3], [-3.6, 1.3], [-3.6, -1.3]].forEach(([x, z]) => {
+    const w = new THREE.Mesh(wg, wm); w.rotation.x = Math.PI / 2; w.position.set(x, 0.62, z); w.castShadow = true; g.add(w);
+    const h = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.23, 0.53, 10), hub); h.rotation.x = Math.PI / 2; h.position.set(x, 0.62, z); g.add(h);
+  });
+  g.position.set(-1, 0, 0); scene.add(g);
 
-  // a small car being towed (on a ramp behind)
-  const towed = car(0x4f74d9); towed.position.set(-6.5, 0.2, 0); towed.rotation.y = Math.PI; towed.scale.setScalar(0.95); scene.add(towed);
-  // roadside trees
-  for (let x = -40; x <= 40; x += 12) { [10, -10].forEach((z) => { const t = tree(rnd(1, 1.5)); t.position.set(x + rnd(-3, 3), 0, z); scene.add(t); }); }
-
-  camera.position.set(6, 4.4, 13); camera.lookAt(-1, 1.6, 0);
-  return { title: "Tow truck — Dream Towing", sub: "stylized truck with boom & hook, towing a car down the road" };
+  const towed = car(0x44618f); towed.position.set(-6.4, 0.25, 0); towed.rotation.y = Math.PI; towed.scale.setScalar(0.95); scene.add(towed);
+  for (let x = -50; x <= 50; x += 13) {
+    [11, -11].forEach((z) => { const t = tree(rnd(1, 1.6)); t.position.set(x + rnd(-3, 3), 0, z); scene.add(t); });
+  }
+  for (let x = -36; x <= 36; x += 24) { const l = streetLamp(5); l.position.set(-9.5, 0, x); scene.add(l); }
+  motes(60, 24, 0.6, 7);
+  camera.position.set(7.5, 3.6, 12.5);
+  return { title: "Tow truck — Dream Towing", sub: "twilight · amber beacon, headlight glow, lamp-lit road", target: new THREE.Vector3(-1, 1.6, 0) };
 }
 
-/* ---------- Boot ---------- */
-let meta;
-if (KEY === "clinic") meta = buildClinic();
-else if (KEY === "truck") meta = buildTruck();
-else meta = buildHood();
+/* ---------------- Boot ---------------- */
+const meta = KEY === "clinic" ? buildClinic() : KEY === "truck" ? buildTruck() : buildHood();
 document.getElementById("title").textContent = meta.title;
 document.getElementById("sub").textContent = meta.sub;
 document.getElementById("t-" + KEY)?.classList.add("on");
 
-const target = new THREE.Vector3(0, KEY === "hood" ? 1 : (KEY === "clinic" ? 4 : 1.6), 0);
-let ang = Math.atan2(camera.position.z, camera.position.x);
+/* HDRI image-based lighting — real reflections & ambient bounce */
+new RGBELoader().setPath("../assets/hdri/").load("evening_road_01_puresky_1k.hdr", (tex) => {
+  tex.mapping = THREE.EquirectangularReflectionMapping;
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromEquirectangular(tex).texture;
+  scene.environmentIntensity = 0.55;
+  tex.dispose(); pmrem.dispose();
+  window.__hdri = true;
+}, undefined, () => { window.__hdri = false; });
+
+/* Gradient twilight backdrop (our own — keeps the art direction) */
+(function backdrop() {
+  const m = new THREE.Mesh(new THREE.SphereGeometry(500, 32, 20), new THREE.ShaderMaterial({
+    side: THREE.BackSide, depthWrite: false, fog: false,
+    uniforms: { top: { value: new THREE.Color(0x121a44) }, mid: { value: new THREE.Color(0x3d3a72) }, low: { value: new THREE.Color(0x8a5d7e) }, hor: { value: new THREE.Color(0xe0895c) } },
+    vertexShader: `varying vec3 p; void main(){ p=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+    fragmentShader: `varying vec3 p; uniform vec3 top,mid,low,hor;
+      void main(){ float h=normalize(p).y;
+        vec3 c=mix(hor,low,smoothstep(-0.02,0.12,h));
+        c=mix(c,mid,smoothstep(0.08,0.34,h));
+        c=mix(c,top,smoothstep(0.3,0.85,h));
+        gl_FragColor=vec4(c,1.); }`,
+  }));
+  scene.add(m);
+})();
+
+/* Bloom — what makes every warm light feel magical */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.38, 0.7, 0.92));
+composer.addPass(new OutputPass());
+composer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+
 const rad = Math.hypot(camera.position.x, camera.position.z);
+let ang = Math.atan2(camera.position.z, camera.position.x);
 const camY = camera.position.y;
 const clock = new THREE.Clock();
-addEventListener("resize", () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
 function loop() {
-  const t = clock.getElapsedTime();
-  ang += 0.0009 * (KEY === "hood" ? 1 : 0.7);
-  camera.position.set(Math.cos(ang) * rad, camY + Math.sin(t * 0.3) * 0.4, Math.sin(ang) * rad);
-  camera.lookAt(target);
-  renderer.render(scene, camera);
+  const t = clock.getElapsedTime(), dt = Math.min(clock.getDelta(), 0.05);
+  ang += 0.0011;
+  camera.position.set(Math.cos(ang) * rad, camY + Math.sin(t * 0.25) * 0.5, Math.sin(ang) * rad);
+  camera.lookAt(meta.target);
+  scene.traverse((o) => {
+    if (o.isSprite && o.userData.base) {
+      o.position.y = o.userData.base.y + Math.sin(t * 0.6 + o.userData.phase) * o.userData.amp;
+      o.position.x = o.userData.base.x + Math.cos(t * 0.4 + o.userData.phase) * o.userData.amp * 0.6;
+    }
+  });
+  if (meta.traffic) meta.traffic.forEach((tr) => { tr.c.position.z += tr.dir * 7 * dt; if (tr.c.position.z > 60) tr.c.position.z = -60; if (tr.c.position.z < -60) tr.c.position.z = 60; });
+  composer.render();
   requestAnimationFrame(loop);
 }
 loop();
