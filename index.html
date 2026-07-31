@@ -1,603 +1,346 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="day">
+<html lang="en" data-lead="balanced">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dream Create Real Estate · Photography &amp; Videography</title>
-  <meta name="description" content="Dream Create Real Estate — swoon-worthy photography &amp; videography that make homes fall in love with the camera. Interiors, exteriors, aerial, twilight &amp; cinematic video tours." />
-  <meta name="theme-color" content="#fbf3ea" />
+  <title>Apps, by Dream Create — one dream, endless creations</title>
+  <meta name="description" content="Apps by Dream Create — a dreamed-up ecosystem of calm, human software. DreamCRM, Dream Create Web, Dream Towing & Dream Create Real Estate. Where Dream meets Create." />
+  <meta name="theme-color" content="#0e0e24" />
 
-  <!-- Open Graph -->
-  <meta property="og:title" content="Dream Create Real Estate" />
-  <meta property="og:description" content="Photography &amp; videography that make homes fall in love with the camera." />
+  <meta property="og:title" content="Apps, by Dream Create" />
+  <meta property="og:description" content="One dream, endless creations. An ecosystem of calm, human software where Dream meets Create." />
   <meta property="og:type" content="website" />
 
-  <!-- Favicon: a tiny house -->
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath d='M50 12 8 46h10v42h64V46h10z' fill='%23d98c6a'/%3E%3Crect x='42' y='60' width='16' height='28' fill='%235b3a4b'/%3E%3Crect x='26' y='52' width='12' height='12' fill='%23f6c87b'/%3E%3Crect x='62' y='52' width='12' height='12' fill='%23f6c87b'/%3E%3C/svg%3E" />
+  <!-- Favicon: a yin-yang -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='48' fill='%23f6e3cf'/%3E%3Cpath d='M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48' fill='%23161636'/%3E%3Ccircle cx='50' cy='26' r='8' fill='%23e6b877'/%3E%3Ccircle cx='50' cy='74' r='8' fill='%23cfc9ff'/%3E%3C/svg%3E" />
 
-  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Nunito:wght@400;500;600;700;800&family=Caveat:wght@600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&display=swap" rel="stylesheet" />
 
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/app.css" />
 </head>
 <body>
+  <!-- scroll progress -->
+  <div class="scrollbar" aria-hidden="true"><span></span></div>
+  <!-- cursor motes -->
+  <div class="motes" aria-hidden="true"></div>
 
-  <!-- ===== Scroll progress: a house being built ===== -->
-  <div class="build-progress" aria-hidden="true">
-    <div class="build-progress__track">
-      <div class="build-progress__fill"></div>
-    </div>
-    <div class="build-progress__house">
-      <svg viewBox="0 0 24 24" width="26" height="26"><path d="M12 2 1 11h3v11h16V11h3z" fill="currentColor"/><rect x="10" y="15" width="4" height="7" fill="#fff" opacity=".85"/></svg>
-    </div>
-  </div>
-
-  <!-- ===== Cursor sparkle layer ===== -->
-  <div class="sparkle-layer" aria-hidden="true"></div>
-
-  <!-- ===== Navigation ===== -->
-  <header class="nav" id="nav">
-    <a href="#top" class="brand" aria-label="Dream Create Real Estate home">
-      <span class="brand__mark" aria-hidden="true">
-        <svg viewBox="0 0 48 48" width="40" height="40">
-          <path d="M24 5 4 21h5v22h30V21h5z" class="brand__roof"/>
-          <rect x="20" y="30" width="8" height="13" class="brand__door"/>
-          <rect x="12" y="25" width="6" height="6" class="brand__win"/>
-          <rect x="30" y="25" width="6" height="6" class="brand__win"/>
-          <circle cx="24" cy="14" r="3" class="brand__heart-dot"/>
+  <!-- ===== NAV ===== -->
+  <header class="nav nav--on-dark" id="nav">
+    <a href="#top" class="wordmark" aria-label="Apps by Dream Create — home">
+      <span class="wordmark__emblem" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="34" height="34">
+          <circle cx="50" cy="50" r="48" class="ym-light"/>
+          <path d="M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48" class="ym-dark"/>
+          <circle cx="50" cy="26" r="8" class="ym-seed-warm"/>
+          <circle cx="50" cy="74" r="8" class="ym-seed-cool"/>
         </svg>
       </span>
-      <span class="brand__text">
-        <span class="brand__name">Dream Create</span>
-        <span class="brand__sub">Real Estate Media</span>
+      <span class="wordmark__text">
+        <span class="wordmark__pre">Apps, by</span>
+        <span class="wordmark__name"><b class="w-dream">Dream</b> <i class="w-create">Create</i></span>
       </span>
     </a>
 
     <nav class="nav__links" aria-label="Primary">
-      <a href="#services">Services</a>
-      <a href="#work">Portfolio</a>
-      <a href="#process">Process</a>
-      <a href="#about">About</a>
-      <a href="#contact">Say Hello</a>
+      <a href="#duality">The Duality</a>
+      <a href="#apps">The Apps</a>
+      <a href="#philosophy">Philosophy</a>
+      <a href="#contact">Contact</a>
     </nav>
 
     <div class="nav__actions">
-      <button class="theme-toggle" id="themeToggle" aria-label="Toggle day and night" aria-pressed="false">
-        <span class="theme-toggle__track">
-          <span class="theme-toggle__thumb">
-            <svg class="icon-sun" viewBox="0 0 24 24" width="16" height="16"><circle cx="12" cy="12" r="5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.2" y1="4.2" x2="5.6" y2="5.6"/><line x1="18.4" y1="18.4" x2="19.8" y2="19.8"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.2" y1="19.8" x2="5.6" y2="18.4"/><line x1="18.4" y1="5.6" x2="19.8" y2="4.2"/></g></svg>
-            <svg class="icon-moon" viewBox="0 0 24 24" width="15" height="15"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" fill="currentColor"/></svg>
-          </span>
+      <button class="balance-toggle" id="balanceToggle" aria-label="Shift the balance between Dream and Create" title="Shift the balance">
+        <span class="balance-toggle__orb">
+          <svg viewBox="0 0 100 100" width="24" height="24">
+            <circle cx="50" cy="50" r="48" class="ym-light"/>
+            <path d="M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48" class="ym-dark"/>
+            <circle cx="50" cy="26" r="8" class="ym-seed-warm"/>
+            <circle cx="50" cy="74" r="8" class="ym-seed-cool"/>
+          </svg>
         </span>
       </button>
-      <a href="#contact" class="btn btn--primary nav__cta">
-        <span>Book a Shoot</span>
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </a>
-      <button class="nav__burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
+      <a href="#apps" class="btn btn--dawn nav__cta"><span>Explore apps</span></a>
+      <button class="nav__burger" id="navBurger" aria-label="Open menu" aria-expanded="false"><span></span><span></span><span></span></button>
     </div>
   </header>
 
-  <!-- ===== HERO ===== -->
   <main id="top">
-    <section class="hero" id="hero">
-      <!-- Layered animated scene -->
-      <div class="hero__scene" aria-hidden="true">
-        <div class="sky"></div>
-        <div class="stars"></div>
-        <div class="celestial">
-          <div class="sun"></div>
-          <div class="moon"><span></span><span></span><span></span></div>
-        </div>
+    <!-- ===== HERO ===== -->
+    <section class="hero mode-dream" id="hero">
+      <div class="starfield" data-stars="90" aria-hidden="true"></div>
+      <div class="hero__aura" aria-hidden="true"></div>
 
-        <!-- drifting clouds -->
-        <div class="cloud cloud--1"></div>
-        <div class="cloud cloud--2"></div>
-        <div class="cloud cloud--3"></div>
-
-        <!-- floating aerial drone (videography nod) -->
-        <div class="drone" data-parallax="0.5">
-          <svg viewBox="0 0 120 70" width="120" height="70">
-            <g fill="#5b3a4b">
-              <ellipse cx="60" cy="42" rx="22" ry="11"/>
-              <rect x="56" y="34" width="8" height="8" rx="2"/>
-            </g>
-            <circle cx="60" cy="50" r="6" fill="#f6c87b" class="drone__lens"/>
-            <g stroke="#5b3a4b" stroke-width="3" stroke-linecap="round">
-              <line x1="40" y1="36" x2="18" y2="24"/><line x1="80" y1="36" x2="102" y2="24"/>
-            </g>
-            <g class="drone__props">
-              <ellipse cx="16" cy="22" rx="16" ry="4" fill="#3a3231" opacity=".5"/>
-              <ellipse cx="104" cy="22" rx="16" ry="4" fill="#3a3231" opacity=".5"/>
-            </g>
-          </svg>
-        </div>
-
-        <!-- hot air balloon shaped like a house -->
-        <div class="balloon" data-parallax="0.25">
-          <svg viewBox="0 0 90 130" width="80" height="116">
-            <path d="M45 4C22 4 8 22 8 42c0 20 18 34 25 44h24c7-10 25-24 25-44C82 22 68 4 45 4Z" fill="#d98c6a"/>
-            <path d="M45 4C33 4 27 22 27 42c0 20 4 34 8 44h20c4-10 8-24 8-44C63 22 57 4 45 4Z" fill="#eab8b1" opacity=".6"/>
-            <path d="M20 44 45 26l25 18" fill="none" stroke="#fff5ec" stroke-width="3" opacity=".7"/>
-            <rect x="34" y="92" width="22" height="14" rx="3" fill="#5b3a4b"/>
-            <rect x="41" y="96" width="8" height="10" fill="#f6c87b"/>
-          </svg>
-        </div>
-
-        <!-- rolling hills -->
-        <div class="hills hills--back"></div>
-        <div class="hills hills--front"></div>
-
-        <!-- the charming house -->
-        <div class="house-scene" data-parallax="-0.15">
-          <svg viewBox="0 0 360 300" width="360" height="300" class="the-house">
-            <!-- shadow -->
-            <ellipse cx="180" cy="286" rx="150" ry="14" fill="#000" opacity=".08"/>
-            <!-- chimney + smoke -->
-            <rect x="238" y="66" width="26" height="46" rx="3" fill="#b96b4c"/>
-            <g class="smoke">
-              <circle cx="251" cy="58" r="7"/><circle cx="256" cy="44" r="9"/><circle cx="248" cy="30" r="11"/>
-            </g>
-            <!-- roof -->
-            <path d="M180 44 40 150h280z" fill="#c97b5a"/>
-            <path d="M180 44 40 150h30L180 74z" fill="#d98c6a"/>
-            <!-- body -->
-            <rect x="66" y="150" width="228" height="120" fill="#fff5ec"/>
-            <rect x="66" y="150" width="228" height="120" fill="url(#wall)" opacity=".5"/>
-            <!-- door -->
-            <rect x="158" y="196" width="44" height="74" rx="22" fill="#5b3a4b" class="house-door"/>
-            <circle cx="192" cy="234" r="3" fill="#f6c87b"/>
-            <!-- windows that glow at night -->
-            <g class="house-win">
-              <rect x="94" y="182" width="40" height="40" rx="6" fill="#cfe3ec"/>
-              <path d="M94 202h40M114 182v40" stroke="#fff5ec" stroke-width="3"/>
-            </g>
-            <g class="house-win">
-              <rect x="226" y="182" width="40" height="40" rx="6" fill="#cfe3ec"/>
-              <path d="M226 202h40M246 182v40" stroke="#fff5ec" stroke-width="3"/>
-            </g>
-            <!-- heart wreath on door -->
-            <path d="M180 168c-4-6-14-4-14 3 0 6 8 10 14 15 6-5 14-9 14-15 0-7-10-9-14-3z" fill="#eab8b1" opacity=".9"/>
-
-            <!-- little puppy peeking from behind the house -->
-            <g class="puppy" transform="translate(276 214)">
-              <ellipse cx="20" cy="52" rx="20" ry="8" fill="#000" opacity=".08"/>
-              <path d="M6 30c-6-2-6 14 2 16" fill="#c99a6a"/>
-              <path d="M34 30c6-2 6 14-2 16" fill="#c99a6a"/>
-              <circle cx="20" cy="30" r="18" fill="#e0b978"/>
-              <ellipse cx="20" cy="38" rx="9" ry="7" fill="#fff2df"/>
-              <circle cx="20" cy="35" r="2.6" fill="#3a3231"/>
-              <circle cx="13" cy="26" r="3.2" fill="#3a3231" class="puppy__eye"/>
-              <circle cx="27" cy="26" r="3.2" fill="#3a3231" class="puppy__eye"/>
-              <circle cx="13.8" cy="25" r="1" fill="#fff"/><circle cx="27.8" cy="25" r="1" fill="#fff"/>
-            </g>
-
-            <defs>
-              <linearGradient id="wall" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#f3d9c9"/>
-              </linearGradient>
-            </defs>
-          </svg>
-
-          <!-- animated "For Sale / Just Listed" swinging sign -->
-          <div class="yard-sign">
-            <div class="yard-sign__post"></div>
-            <div class="yard-sign__board">
-              <span class="yard-sign__small">Now Booking</span>
-              <span class="yard-sign__big">Just Listed</span>
-              <span class="yard-sign__heart">♥</span>
-            </div>
+      <div class="hero__inner">
+        <div class="hero__copy">
+          <span class="eyebrow reveal"><span class="eyebrow__spark"></span> A Dream Create universe</span>
+          <h1 class="hero__title reveal">
+            One <span class="grad-dream">dream</span>,<br />
+            endless <span class="grad-create">creations.</span>
+          </h1>
+          <p class="hero__lede reveal">
+            <b>Apps, by Dream Create</b> — an ecosystem of calm, human software.
+            Where <em class="t-dream">Dream</em> engineers the systems and
+            <em class="t-create">Create</em> gives them soul. Two halves, one whole.
+          </p>
+          <div class="hero__cta reveal">
+            <a href="#apps" class="btn btn--dawn btn--lg"><span>Explore the apps</span>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </a>
+            <a href="#duality" class="btn btn--glass btn--lg"><span>Meet Dream &amp; Create</span></a>
+          </div>
+          <div class="hero__meta reveal">
+            <span><b>3</b> live apps</span><span class="dot">·</span>
+            <span><b>1</b> in the works</span><span class="dot">·</span>
+            <span><b>∞</b> dreams</span>
           </div>
         </div>
 
-        <!-- fireflies at night -->
-        <div class="fireflies"></div>
-      </div>
-
-      <!-- Hero copy -->
-      <div class="hero__content">
-        <span class="eyebrow eyebrow--center reveal">
-          <span class="eyebrow__dot"></span> Real Estate Photography &amp; Videography
-        </span>
-        <h1 class="hero__title reveal">
-          Every home deserves its
-          <span class="fancy">glamour&nbsp;shot.</span>
-        </h1>
-        <p class="hero__lede reveal">
-          We make listings <em>swoon-worthy</em> — bright, warm, cinematic photos &amp; video that
-          help buyers fall head over heels before they ever walk through the door.
-        </p>
-        <div class="hero__cta reveal">
-          <a href="#contact" class="btn btn--primary btn--lg">
-            <span>Book Your Shoot</span>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </a>
-          <a href="#work" class="btn btn--ghost btn--lg">
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
-            <span>See the Portfolio</span>
-          </a>
-        </div>
-        <div class="hero__trust reveal">
-          <div class="trust-stat"><strong data-count="500">0</strong><span>homes shot</span></div>
-          <div class="trust-stat"><strong data-count="24">0</strong><span>hr delivery</span></div>
-          <div class="trust-stat"><strong data-count="100">0</strong><span>% love, promised</span></div>
-        </div>
-      </div>
-
-      <a href="#services" class="scroll-cue" aria-label="Scroll down">
-        <span class="scroll-cue__mouse"><span></span></span>
-        <span class="scroll-cue__text">peek inside</span>
-      </a>
-    </section>
-
-    <!-- blueprint divider -->
-    <div class="divider divider--blueprint" aria-hidden="true">
-      <svg viewBox="0 0 1440 60" preserveAspectRatio="none"><path d="M0 40 L120 40 L150 15 L180 40 L1260 40 L1290 15 L1320 40 L1440 40" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="6 8"/></svg>
-    </div>
-
-    <!-- ===== SERVICES ===== -->
-    <section class="section services" id="services">
-      <div class="section__head reveal">
-        <span class="eyebrow"><span class="eyebrow__dot"></span> What we do</span>
-        <h2 class="section__title">A whole home's worth of <span class="fancy">pretty.</span></h2>
-        <p class="section__sub">Pick a package or mix &amp; match — every room, angle, and golden hour covered.</p>
-      </div>
-
-      <div class="services__grid">
-        <!-- Card 1 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:0">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><rect x="6" y="12" width="36" height="26" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="24" cy="25" r="7" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="17" y="8" width="14" height="6" rx="2" fill="currentColor"/><circle cx="36" cy="18" r="1.6" fill="currentColor"/></svg>
-          </div>
-          <h3>Interior &amp; Exterior Photography</h3>
-          <p>Bright, true-to-life HDR stills that make every room feel like home. Wide, styled, and flattering.</p>
-          <span class="svc-card__tag">from $189</span>
-        </article>
-        <!-- Card 2 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:1">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><rect x="6" y="14" width="26" height="20" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M32 22l10-6v16l-10-6z" fill="currentColor"/></svg>
-          </div>
-          <h3>Cinematic Video Tours</h3>
-          <p>Smooth, scroll-stopping walkthroughs with motion, music, and mood. Built for the social-media scroll.</p>
-          <span class="svc-card__tag">from $349</span>
-        </article>
-        <!-- Card 3 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:2">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><circle cx="24" cy="24" r="6" fill="currentColor"/><g stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 18 8 12M30 18l10-6M18 30 8 36M30 30l10 6"/></g><ellipse cx="8" cy="11" rx="6" ry="2" fill="currentColor" opacity=".5"/><ellipse cx="40" cy="11" rx="6" ry="2" fill="currentColor" opacity=".5"/><ellipse cx="8" cy="37" rx="6" ry="2" fill="currentColor" opacity=".5"/><ellipse cx="40" cy="37" rx="6" ry="2" fill="currentColor" opacity=".5"/></svg>
-          </div>
-          <h3>Aerial &amp; Drone</h3>
-          <p>Sweeping FAA-licensed aerials that show off the lot, the neighborhood, and that dreamy sunset skyline.</p>
-          <span class="svc-card__tag">from $149</span>
-        </article>
-        <!-- Card 4 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:3">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><path d="M24 6 6 20h4v22h28V20h4z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="24" cy="30" r="6" fill="currentColor"/><path d="M24 6v6" stroke="currentColor" stroke-width="2.4"/></svg>
-          </div>
-          <h3>Twilight Shoots</h3>
-          <p>That magic-hour glow — warm windows, purple skies, and serious curb-appeal drama.</p>
-          <span class="svc-card__tag">from $129</span>
-        </article>
-        <!-- Card 5 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:4">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M8 20h32M20 20v20" stroke="currentColor" stroke-width="2.4"/><circle cx="14" cy="14" r="2" fill="currentColor"/></svg>
-          </div>
-          <h3>Floor Plans &amp; Virtual Tours</h3>
-          <p>Interactive 3D tours and clean 2D/3D floor plans so buyers can wander any time, day or night.</p>
-          <span class="svc-card__tag">from $99</span>
-        </article>
-        <!-- Card 6 -->
-        <article class="svc-card reveal" tabindex="0" style="--i:5">
-          <div class="svc-card__icon">
-            <svg viewBox="0 0 48 48" width="30" height="30"><path d="M24 40s-14-8-14-19a8 8 0 0 1 14-5 8 8 0 0 1 14 5c0 11-14 19-14 19z" fill="currentColor"/></svg>
-          </div>
-          <h3>Virtual Staging &amp; Edits</h3>
-          <p>Empty rooms, meet your future. Tasteful virtual furniture, decluttering, and sky swaps that still feel real.</p>
-          <span class="svc-card__tag">from $39/img</span>
-        </article>
-      </div>
-    </section>
-
-    <!-- ===== PORTFOLIO ===== -->
-    <section class="section work" id="work">
-      <div class="section__head reveal">
-        <span class="eyebrow"><span class="eyebrow__dot"></span> Recent love stories</span>
-        <h2 class="section__title">The <span class="fancy">portfolio.</span></h2>
-        <p class="section__sub">A peek at homes we've helped find their perfect match. <em>Your masterpieces go here.</em></p>
-      </div>
-
-      <div class="work__filters reveal" role="tablist" aria-label="Filter portfolio">
-        <button class="chip is-active" data-filter="all" role="tab" aria-selected="true">All</button>
-        <button class="chip" data-filter="interior" role="tab" aria-selected="false">Interiors</button>
-        <button class="chip" data-filter="exterior" role="tab" aria-selected="false">Exteriors</button>
-        <button class="chip" data-filter="aerial" role="tab" aria-selected="false">Aerial</button>
-        <button class="chip" data-filter="twilight" role="tab" aria-selected="false">Twilight</button>
-      </div>
-
-      <div class="work__grid" id="workGrid">
-        <!-- tiles injected + enhanced by JS; these are the source of truth -->
-        <figure class="frame reveal" data-cat="exterior" data-scene="cottage" style="--g1:#f5c9a8;--g2:#d98c6a;--g3:#8da982">
-          <figcaption><span class="frame__tag">Exterior</span><span class="frame__title">The Willow Cottage</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="interior" data-scene="living" style="--g1:#fbe6d4;--g2:#eab8b1;--g3:#c99b5b">
-          <figcaption><span class="frame__tag">Interior</span><span class="frame__title">Sunlit Living Room</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="twilight" data-scene="twilight" style="--g1:#3a3a63;--g2:#8a5a7a;--g3:#f6c87b">
-          <figcaption><span class="frame__tag">Twilight</span><span class="frame__title">Golden Hour Glow</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="aerial" data-scene="aerial" style="--g1:#a9d6c9;--g2:#8da982;--g3:#5b7a5a">
-          <figcaption><span class="frame__tag">Aerial</span><span class="frame__title">Bird's Eye Estate</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="interior" data-scene="kitchen" style="--g1:#fff3e2;--g2:#e0b978;--g3:#d98c6a">
-          <figcaption><span class="frame__tag">Interior</span><span class="frame__title">Chef's Dream Kitchen</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="exterior" data-scene="modern" style="--g1:#dfe9ee;--g2:#a9bfa0;--g3:#5b3a4b">
-          <figcaption><span class="frame__tag">Exterior</span><span class="frame__title">Modern Farmhouse</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="twilight" data-scene="pool" style="--g1:#2c3a63;--g2:#3a6a8a;--g3:#f6c87b">
-          <figcaption><span class="frame__tag">Twilight</span><span class="frame__title">Poolside at Dusk</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="aerial" data-scene="neighborhood" style="--g1:#cfe3ec;--g2:#a9d6c9;--g3:#8da982">
-          <figcaption><span class="frame__tag">Aerial</span><span class="frame__title">Tree-Lined Streets</span></figcaption>
-        </figure>
-        <figure class="frame reveal" data-cat="interior" data-scene="bedroom" style="--g1:#f7e0e0;--g2:#eab8b1;--g3:#b98a9a">
-          <figcaption><span class="frame__tag">Interior</span><span class="frame__title">Cozy Primary Suite</span></figcaption>
-        </figure>
-      </div>
-
-      <!-- Before / After staging slider -->
-      <div class="beforeafter reveal">
-        <div class="beforeafter__head">
-          <h3>Empty room? <span class="fancy">Watch this.</span></h3>
-          <p>Drag the little house across to see the magic of virtual staging. 🏡</p>
-        </div>
-        <div class="ba" id="ba">
-          <div class="ba__img ba__img--after" data-label="After">
-            <div class="ba-scene ba-scene--staged"></div>
-            <span class="ba__badge ba__badge--after">Staged ✨</span>
-          </div>
-          <div class="ba__img ba__img--before" id="baBefore" data-label="Before">
-            <div class="ba-scene ba-scene--empty"></div>
-            <span class="ba__badge ba__badge--before">Empty</span>
-          </div>
-          <div class="ba__handle" id="baHandle" role="slider" aria-label="Reveal staged room" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50" tabindex="0">
-            <span class="ba__handle-btn">
-              <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 2 3 9h2v11h14V9h2z" fill="currentColor"/></svg>
-            </span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== PROCESS ===== -->
-    <section class="section process" id="process">
-      <div class="section__head reveal">
-        <span class="eyebrow"><span class="eyebrow__dot"></span> Easy as pie (or pups)</span>
-        <h2 class="section__title">How we <span class="fancy">build the dream.</span></h2>
-        <p class="section__sub">Four cozy steps from "just listed" to "just sold."</p>
-      </div>
-
-      <ol class="process__path">
-        <li class="pstep reveal" style="--i:0">
-          <div class="pstep__num"><span>1</span>
-            <svg class="pstep__ico" viewBox="0 0 32 32" width="26" height="26"><rect x="5" y="7" width="22" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 13h22M11 4v6M21 4v6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-          </div>
-          <h3>Book</h3>
-          <p>Tell us about the home. We'll find a golden-hour slot and send a tidy checklist.</p>
-        </li>
-        <li class="pstep reveal" style="--i:1">
-          <div class="pstep__num"><span>2</span>
-            <svg class="pstep__ico" viewBox="0 0 32 32" width="26" height="26"><rect x="4" y="9" width="24" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="16" cy="17" r="5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="12" y="5" width="8" height="4" rx="1" fill="currentColor"/></svg>
-          </div>
-          <h3>Shoot</h3>
-          <p>We arrive on time, styling as we go — photo, video &amp; drone in one friendly visit.</p>
-        </li>
-        <li class="pstep reveal" style="--i:2">
-          <div class="pstep__num"><span>3</span>
-            <svg class="pstep__ico" viewBox="0 0 32 32" width="26" height="26"><path d="M6 22 20 8l4 4L10 26H6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M17 11l4 4" stroke="currentColor" stroke-width="2"/></svg>
-          </div>
-          <h3>Polish</h3>
-          <p>Hand-edited for warmth, color, and sparkle. Skies swapped, clutter gone, magic added.</p>
-        </li>
-        <li class="pstep reveal" style="--i:3">
-          <div class="pstep__num"><span>4</span>
-            <svg class="pstep__ico" viewBox="0 0 32 32" width="26" height="26"><path d="M16 4 4 11l12 7 12-7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M4 11v10l12 7 12-7V11" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-          </div>
-          <h3>Deliver</h3>
-          <p>Your gorgeous gallery lands in your inbox within 24 hours — download, share, sell. 💌</p>
-        </li>
-      </ol>
-    </section>
-
-    <!-- ===== ABOUT ===== -->
-    <section class="section about" id="about">
-      <div class="about__grid">
-        <div class="about__portrait reveal">
-          <div class="portrait-frame">
-            <div class="portrait-frame__photo">
-              <!-- swap for a real headshot: <img src="assets/img/owner.jpg" alt="..."> -->
-              <svg viewBox="0 0 200 240" width="100%" height="100%" aria-label="Owner portrait placeholder">
-                <rect width="200" height="240" fill="#f3d9c9"/>
-                <circle cx="100" cy="96" r="46" fill="#e6c3a8"/>
-                <path d="M54 96a46 46 0 0 1 92 0c0 6-8 8-16 6-6 12-24 12-30 0-6 2-14 2-20-2-8 2-26 2-26-4z" fill="#7a5a44"/>
-                <rect x="40" y="150" width="120" height="90" rx="40" fill="#d98c6a"/>
-                <circle cx="100" cy="150" r="20" fill="#e6c3a8"/>
-              </svg>
-            </div>
-            <span class="portrait-frame__badge">The Owner ♥</span>
-          </div>
-          <div class="doghouse" title="woof!">
-            <svg viewBox="0 0 90 80" width="90" height="80">
-              <path d="M45 8 8 38h6v34h62V38h6z" fill="#c97b5a"/>
-              <path d="M45 30a14 14 0 0 0 0 42z" fill="#3a3231"/>
-              <ellipse cx="45" cy="70" rx="20" ry="4" fill="#000" opacity=".1"/>
-              <g class="doghouse__pup">
-                <circle cx="45" cy="58" r="11" fill="#e0b978"/>
-                <ellipse cx="45" cy="63" rx="6" ry="4.5" fill="#fff2df"/>
-                <circle cx="45" cy="60" r="1.6" fill="#3a3231"/>
-                <circle cx="40.5" cy="54" r="2" fill="#3a3231"/><circle cx="49.5" cy="54" r="2" fill="#3a3231"/>
-                <path d="M34 50c-3-1-3 7 1 8M56 50c3-1 3 7-1 8" fill="#c99a6a"/>
+        <!-- The living yin-yang emblem -->
+        <div class="hero__emblem reveal" data-parallax="0.4">
+          <div class="emblem">
+            <div class="emblem__glow"></div>
+            <svg viewBox="0 0 100 100" class="emblem__yy" width="360" height="360" aria-hidden="true">
+              <defs>
+                <radialGradient id="cosmo" cx="42%" cy="34%" r="80%">
+                  <stop offset="0" stop-color="#2a2668"/><stop offset="55%" stop-color="#15143a"/><stop offset="100%" stop-color="#0c0b24"/>
+                </radialGradient>
+                <radialGradient id="dawn" cx="60%" cy="66%" r="80%">
+                  <stop offset="0" stop-color="#fff2e0"/><stop offset="55%" stop-color="#f6d3bd"/><stop offset="100%" stop-color="#eeb98f"/>
+                </radialGradient>
+                <linearGradient id="seam" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#8f7fe0"/><stop offset="50%" stop-color="#c56b8a"/><stop offset="100%" stop-color="#e6b877"/>
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="49" fill="url(#dawn)"/>
+              <path d="M50 1a49 49 0 0 1 0 98 24.5 24.5 0 0 1 0-49 24.5 24.5 0 0 0 0-49" fill="url(#cosmo)"/>
+              <circle cx="50" cy="50" r="49" fill="none" stroke="url(#seam)" stroke-width="1.1" opacity=".9"/>
+              <!-- stars in the dream half -->
+              <g class="emblem__stars" fill="#ffe9b0">
+                <circle cx="60" cy="18" r="1"/><circle cx="70" cy="30" r=".7"/><circle cx="64" cy="42" r=".9"/>
+                <circle cx="74" cy="52" r=".6"/><circle cx="58" cy="60" r=".7"/><circle cx="68" cy="70" r=".8"/>
+                <circle cx="55" cy="30" r=".6"/><circle cx="72" cy="42" r=".5"/>
               </g>
+              <!-- sparkles in the create half -->
+              <g class="emblem__sparkles" fill="#d98c6a">
+                <circle cx="34" cy="70" r=".9"/><circle cx="28" cy="58" r=".7"/><circle cx="40" cy="60" r=".6"/>
+                <circle cx="30" cy="44" r=".7"/><circle cx="42" cy="80" r=".8"/>
+              </g>
+              <!-- seed dots -->
+              <circle cx="50" cy="25.5" r="8" fill="url(#dawn)" class="seed seed--warm"/>
+              <circle cx="50" cy="25.5" r="2.4" fill="#d98c6a"/>
+              <circle cx="50" cy="74.5" r="8" fill="url(#cosmo)" class="seed seed--cool"/>
+              <circle cx="50" cy="74.5" r="2.4" fill="#cfc9ff"/>
             </svg>
-            <span class="doghouse__label">our art director</span>
+            <!-- orbiting app dots -->
+            <div class="emblem__orbit orbit--1"><span class="orbit-dot" title="DreamCRM"></span></div>
+            <div class="emblem__orbit orbit--2"><span class="orbit-dot" title="Dream Create Web"></span></div>
+            <div class="emblem__orbit orbit--3"><span class="orbit-dot" title="Dream Towing"></span></div>
           </div>
-        </div>
-
-        <div class="about__body reveal">
-          <span class="eyebrow"><span class="eyebrow__dot"></span> Nice to meet you</span>
-          <h2 class="section__title">Hi, I'm <span class="fancy">[Her Name]</span> 👋</h2>
-          <p class="about__lead">
-            I started Dream Create Real Estate Media because I believe every home has a story worth
-            telling beautifully — and every agent deserves photos they're proud to post.
-          </p>
-          <p>
-            With a background in creative photography &amp; videography and a serious soft spot for
-            golden light (and golden retrievers), I treat each listing like it's my own front door.
-            The result? Bright, warm, honest imagery that gets homes noticed, saved, and <em>sold.</em>
-          </p>
-          <ul class="about__list">
-            <li><span class="tick">✓</span> Fully insured &amp; FAA-licensed drone pilot</li>
-            <li><span class="tick">✓</span> 24-hour turnaround, every time</li>
-            <li><span class="tick">✓</span> Local, friendly &amp; obsessively on-time</li>
-          </ul>
-          <a href="#contact" class="btn btn--primary">
-            <span>Let's make something pretty</span>
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-          </a>
+          <p class="emblem__caption">each half holds a spark of the other</p>
         </div>
       </div>
+
+      <a href="#duality" class="scroll-cue" aria-label="Scroll down"><span></span></a>
     </section>
 
-    <!-- ===== TESTIMONIALS ===== -->
-    <section class="section testi" id="love">
+    <!-- ===== DUALITY ===== -->
+    <section class="section duality mode-twilight" id="duality">
       <div class="section__head reveal">
-        <span class="eyebrow"><span class="eyebrow__dot"></span> Kind words</span>
-        <h2 class="section__title">Agents are <span class="fancy">smitten.</span></h2>
+        <span class="eyebrow eyebrow--center"><span class="eyebrow__spark"></span> The duality</span>
+        <h2 class="section__title">Two makers. <span class="fr-i">One name.</span></h2>
+        <p class="section__sub">Dream Create is a partnership — a husband &amp; wife building at the seam where engineering meets artistry.</p>
       </div>
-      <div class="testi__grid">
-        <blockquote class="quote-house reveal" style="--i:0">
-          <div class="quote-house__roof"></div>
-          <div class="quote-house__body">
-            <p>"My listings sell in <strong>half the time</strong> now. The photos are unreal — warm, bright, and so inviting."</p>
-            <footer><span class="avatar">JM</span><span>Jamie M. · Realtor®</span></footer>
+
+      <div class="duality__split">
+        <!-- Dream / Dustin -->
+        <article class="half half--dream reveal">
+          <div class="half__stars" data-stars="26" aria-hidden="true"></div>
+          <div class="half__inner">
+            <span class="half__badge">☾ Dream</span>
+            <h3>Dustin</h3>
+            <p class="half__role">The builder · the systems · the night side</p>
+            <p>The engineer behind the ecosystem. Dustin dreams up the platforms — the CRMs, the automations, the quiet machinery that makes a Tuesday run itself. Structure, logic, and a little starlight.</p>
+            <ul class="half__tags"><li>Software</li><li>Automation</li><li>Systems</li></ul>
           </div>
-        </blockquote>
-        <blockquote class="quote-house reveal" style="--i:1">
-          <div class="quote-house__roof"></div>
-          <div class="quote-house__body">
-            <p>"The twilight shots stopped the scroll. I had <strong>three showings booked</strong> the day I posted."</p>
-            <footer><span class="avatar">RT</span><span>Riley T. · Broker</span></footer>
+        </article>
+
+        <!-- the seam -->
+        <div class="seam" aria-hidden="true"><span class="seam__yy">
+          <svg viewBox="0 0 100 100" width="54" height="54">
+            <circle cx="50" cy="50" r="48" class="ym-light"/>
+            <path d="M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48" class="ym-dark"/>
+            <circle cx="50" cy="26" r="8" class="ym-seed-warm"/>
+            <circle cx="50" cy="74" r="8" class="ym-seed-cool"/>
+          </svg>
+        </span></div>
+
+        <!-- Create / Courtney -->
+        <article class="half half--create reveal">
+          <div class="half__motes" aria-hidden="true"></div>
+          <div class="half__inner">
+            <span class="half__badge">☀ Create</span>
+            <h3>Courtney</h3>
+            <p class="half__role">The artist · the soul · the day side</p>
+            <p>The creative eye that gives the work warmth. Courtney brings the light — design, photography, the human feeling that turns software and spaces into something people love. Beauty, warmth, and golden hours.</p>
+            <ul class="half__tags"><li>Design</li><li>Photography</li><li>Story</li></ul>
           </div>
-        </blockquote>
-        <blockquote class="quote-house reveal" style="--i:2">
-          <div class="quote-house__roof"></div>
-          <div class="quote-house__body">
-            <p>"On time, so sweet, and the video tours are <strong>cinematic magic</strong>. My clients cried happy tears."</p>
-            <footer><span class="avatar">DL</span><span>Dana L. · Team Lead</span></footer>
-          </div>
-        </blockquote>
+        </article>
       </div>
     </section>
 
-    <!-- ===== CONTACT / MAILBOX ===== -->
-    <section class="section contact" id="contact">
-      <div class="contact__grid">
-        <div class="contact__intro reveal">
-          <span class="eyebrow"><span class="eyebrow__dot"></span> Say hello</span>
-          <h2 class="section__title">Drop us a <span class="fancy">letter.</span></h2>
-          <p>Fill in the note, pop it in the mailbox, and we'll write back within one business day with availability &amp; a quote. No pressure, all pretty.</p>
+    <!-- ===== APPS ===== -->
+    <section class="section apps mode-create" id="apps">
+      <div class="motes-warm" data-motes="18" aria-hidden="true"></div>
+      <div class="section__head reveal">
+        <span class="eyebrow eyebrow--center"><span class="eyebrow__spark"></span> The ecosystem</span>
+        <h2 class="section__title">The <span class="fr-i">apps.</span></h2>
+        <p class="section__sub">Every one dreamed up, then crafted. Calm, human software built to feel like it runs itself.</p>
+      </div>
 
-          <ul class="contact__meta">
-            <li>
-              <span class="contact__ico">✉️</span>
-              <a href="mailto:hello@dreamcreatestudio.com">hello@dreamcreatestudio.com</a>
-            </li>
-            <li>
-              <span class="contact__ico">📞</span>
-              <a href="tel:+15550000000">(555) 000-0000</a>
-            </li>
-            <li>
-              <span class="contact__ico">📸</span>
-              <a href="#" rel="noopener">@dreamcreate.realestate</a>
-            </li>
-          </ul>
-
-          <!-- The mailbox that receives the letter -->
-          <div class="mailbox" id="mailbox" aria-hidden="true">
-            <div class="mailbox__flag"></div>
-            <div class="mailbox__slot"></div>
-            <div class="mailbox__box">
-              <span class="mailbox__heart">♥</span>
-            </div>
-            <div class="mailbox__post"></div>
-            <div class="letter" id="flyLetter">
-              <svg viewBox="0 0 60 44" width="60" height="44"><rect width="60" height="44" rx="4" fill="#fff5ec" stroke="#d98c6a" stroke-width="2"/><path d="M2 4l28 20L58 4" fill="none" stroke="#d98c6a" stroke-width="2"/><path d="M30 26l6-5" stroke="#eab8b1" stroke-width="2"/></svg>
-            </div>
+      <div class="apps__grid">
+        <!-- DreamCRM -->
+        <article class="app-card app-card--dream reveal" style="--i:0" tabindex="0">
+          <div class="app-card__top">
+            <span class="app-card__icon">
+              <svg viewBox="0 0 48 48" width="26" height="26"><rect x="7" y="10" width="34" height="24" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M7 18h34" stroke="currentColor" stroke-width="2.4"/><circle cx="14" cy="14" r="1.6" fill="currentColor"/><path d="M14 26h10M14 30h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+            </span>
+            <span class="badge badge--live">● Live</span>
           </div>
+          <h3>DreamCRM</h3>
+          <p class="app-card__tag">☾ Dream · Software</p>
+          <p>Your whole front office, one calm system. A subscription platform that runs the day-to-day for dental clinics — messages, scheduling &amp; follow-ups in one place.</p>
+          <a class="app-card__link" href="https://dreamcreatestudio.com" target="_blank" rel="noopener">Visit DreamCRM
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </article>
+
+        <!-- Dream Create Web -->
+        <article class="app-card app-card--seam reveal" style="--i:1" tabindex="0">
+          <div class="app-card__top">
+            <span class="app-card__icon">
+              <svg viewBox="0 0 48 48" width="26" height="26"><rect x="7" y="9" width="34" height="26" rx="5" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M7 16h34M12 42h24" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M17 23l-4 4 4 4M31 23l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="badge badge--live">● Live</span>
+          </div>
+          <h3>Dream Create Web</h3>
+          <p class="app-card__tag">☯ Dream + Create · Studio</p>
+          <p>Where the two halves meet. A web studio that builds &amp; hosts custom, one-of-a-kind websites — engineered clean, designed beautiful. This universe is one of them.</p>
+          <a class="app-card__link" href="#contact">Start a project
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </article>
+
+        <!-- Dream Towing -->
+        <article class="app-card app-card--dream reveal" style="--i:2" tabindex="0">
+          <div class="app-card__top">
+            <span class="app-card__icon">
+              <svg viewBox="0 0 48 48" width="26" height="26"><path d="M4 30h20v-8h9l6 6v2h2" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="12" cy="34" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="34" cy="34" r="4" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M24 22V14l12 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="badge badge--live">● Live</span>
+          </div>
+          <h3>Dream Towing</h3>
+          <p class="app-card__tag">☾ Dream · Software</p>
+          <p>DreamCRM's road-warrior cousin. Dispatch, jobs, drivers &amp; invoicing for towing companies — the calm back office for a business that never stops moving.</p>
+          <a class="app-card__link" href="#contact">Request a demo
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </article>
+
+        <!-- Dream Create Real Estate -->
+        <article class="app-card app-card--create reveal" style="--i:3" tabindex="0">
+          <div class="app-card__top">
+            <span class="app-card__icon">
+              <svg viewBox="0 0 48 48" width="26" height="26"><path d="M24 8 8 21v19h32V21z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><rect x="19" y="28" width="10" height="12" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="24" cy="19" r="3" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+            </span>
+            <span class="badge badge--soon">◐ New</span>
+          </div>
+          <h3>Dream Create <span class="re-sub">| Real Estate</span></h3>
+          <p class="app-card__tag">☀ Create · Media</p>
+          <p>Courtney's lens on the ecosystem. Swoon-worthy real estate photography &amp; videography that makes listings fall in love with the camera. The newest creation.</p>
+          <a class="app-card__link" href="apps/real-estate/index.html">Enter the studio
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+        </article>
+      </div>
+
+      <p class="apps__note reveal">More dreams in the workshop. <a href="#contact">Want to build something together?</a></p>
+    </section>
+
+    <!-- ===== PHILOSOPHY ===== -->
+    <section class="section philosophy mode-dream" id="philosophy">
+      <div class="starfield" data-stars="60" aria-hidden="true"></div>
+      <div class="philosophy__inner reveal">
+        <span class="eyebrow eyebrow--center"><span class="eyebrow__spark"></span> Why we build</span>
+        <blockquote class="philosophy__quote">
+          Software should feel like a <span class="grad-create">calm Tuesday</span> —
+          quiet, warm, and running itself. We dream up the machine,
+          then <span class="grad-dream">create</span> the feeling.
+        </blockquote>
+        <div class="pillars">
+          <div class="pillar"><span class="pillar__ico">☾</span><h4>Dreamed</h4><p>Every product starts as a system — thought through, engineered to be effortless.</p></div>
+          <div class="pillar"><span class="pillar__ico">☯</span><h4>Balanced</h4><p>Logic and beauty in equal measure. Neither half runs the show alone.</p></div>
+          <div class="pillar"><span class="pillar__ico">☀</span><h4>Created</h4><p>Then given warmth, story &amp; soul — so it feels human, not corporate.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CONTACT ===== -->
+    <section class="section contact mode-twilight" id="contact">
+      <div class="contact__card reveal">
+        <div class="contact__intro">
+          <span class="eyebrow"><span class="eyebrow__spark"></span> Say hello</span>
+          <h2 class="section__title">Let's <span class="fr-i">dream something up.</span></h2>
+          <p>Whether you need a platform engineered, a brand created, or a whole universe of both — the Dream Create studio would love to hear about it.</p>
+          <ul class="contact__meta">
+            <li><span class="c-ico">✉</span><a href="mailto:hello@dreamcreatestudio.com">hello@dreamcreatestudio.com</a></li>
+            <li><span class="c-ico">☾</span><span>Dustin — apps, platforms &amp; systems</span></li>
+            <li><span class="c-ico">☀</span><span>Courtney — design, photo &amp; video</span></li>
+          </ul>
         </div>
 
-        <form class="contact__form reveal" id="contactForm" novalidate>
-          <div class="field">
-            <label for="name">Your name</label>
-            <input type="text" id="name" name="name" placeholder="Jane Agent" required autocomplete="name" />
-            <span class="field__err">Please add your name 🙂</span>
-          </div>
+        <form class="contact__form" id="contactForm" novalidate>
           <div class="field field--split">
+            <div>
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" placeholder="Your name" required autocomplete="name" />
+              <span class="field__err">Add your name ✦</span>
+            </div>
             <div>
               <label for="email">Email</label>
-              <input type="email" id="email" name="email" placeholder="jane@realty.com" required autocomplete="email" />
-              <span class="field__err">A valid email helps us reply 💌</span>
-            </div>
-            <div>
-              <label for="phone">Phone <span class="opt">(optional)</span></label>
-              <input type="tel" id="phone" name="phone" placeholder="(555) 123-4567" autocomplete="tel" />
-            </div>
-          </div>
-          <div class="field field--split">
-            <div>
-              <label for="service">I'm interested in</label>
-              <div class="select-wrap">
-                <select id="service" name="service">
-                  <option>Photography</option>
-                  <option>Video tour</option>
-                  <option>Aerial / drone</option>
-                  <option>Twilight shoot</option>
-                  <option>The full package ♥</option>
-                  <option>Something else</option>
-                </select>
-              </div>
-            </div>
-            <div>
-              <label for="date">Ideal date <span class="opt">(optional)</span></label>
-              <input type="date" id="date" name="date" />
+              <input id="email" name="email" type="email" placeholder="you@email.com" required autocomplete="email" />
+              <span class="field__err">A valid email helps us reply ✦</span>
             </div>
           </div>
           <div class="field">
-            <label for="address">Property address <span class="opt">(optional)</span></label>
-            <input type="text" id="address" name="address" placeholder="123 Dreamy Lane" autocomplete="street-address" />
+            <label for="interest">What are you dreaming up?</label>
+            <div class="select-wrap">
+              <select id="interest" name="interest">
+                <option>An app or platform (Dream)</option>
+                <option>A website (Dream Create Web)</option>
+                <option>Photography / video (Create)</option>
+                <option>DreamCRM for my clinic</option>
+                <option>Dream Towing for my company</option>
+                <option>Something else entirely</option>
+              </select>
+            </div>
           </div>
           <div class="field">
-            <label for="message">Tell us about the home</label>
-            <textarea id="message" name="message" rows="4" placeholder="4-bed farmhouse, lots of natural light, listing goes live next Friday…" required></textarea>
-            <span class="field__err">A little note helps us prep 📝</span>
+            <label for="message">The dream</label>
+            <textarea id="message" name="message" rows="4" placeholder="Tell us what you're imagining…" required></textarea>
+            <span class="field__err">A little detail helps ✦</span>
           </div>
-          <button type="submit" class="btn btn--primary btn--lg btn--block" id="sendBtn">
-            <span class="btn__label">Pop it in the mailbox</span>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 4h16v16H4z" fill="none"/><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+          <button type="submit" class="btn btn--dawn btn--lg btn--block" id="sendBtn">
+            <span class="btn__label">Send the dream</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M22 2 11 13M22 2l-7 20-4-9-9-4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
           </button>
-          <p class="form-note">We'll never share your info. Just good vibes &amp; pretty photos.</p>
-
           <div class="form-success" id="formSuccess" hidden>
-            <div class="form-success__badge">💌</div>
-            <h3>Off it goes!</h3>
-            <p>Your letter is on its way. We'll write back within one business day. Thank you — talk soon! 🏡</p>
+            <div class="form-success__yy">
+              <svg viewBox="0 0 100 100" width="56" height="56"><circle cx="50" cy="50" r="48" class="ym-light"/><path d="M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48" class="ym-dark"/><circle cx="50" cy="26" r="8" class="ym-seed-warm"/><circle cx="50" cy="74" r="8" class="ym-seed-cool"/></svg>
+            </div>
+            <h3>Into the universe it goes ✦</h3>
+            <p>Thanks for reaching out — we'll dream on it and write back within one business day.</p>
           </div>
         </form>
       </div>
@@ -605,55 +348,40 @@
   </main>
 
   <!-- ===== FOOTER ===== -->
-  <footer class="footer" id="footer">
-    <div class="footer__mat">
-      <span>welcome home</span>
-    </div>
-    <div class="footer__grid">
+  <footer class="footer mode-dream" id="footer">
+    <div class="starfield" data-stars="50" aria-hidden="true"></div>
+    <div class="footer__inner">
       <div class="footer__brand">
-        <span class="brand__mark brand__mark--sm" aria-hidden="true">
-          <svg viewBox="0 0 48 48" width="34" height="34"><path d="M24 5 4 21h5v22h30V21h5z" class="brand__roof"/><rect x="20" y="30" width="8" height="13" class="brand__door"/><rect x="12" y="25" width="6" height="6" class="brand__win"/><rect x="30" y="25" width="6" height="6" class="brand__win"/></svg>
+        <span class="wordmark__emblem" aria-hidden="true">
+          <svg viewBox="0 0 100 100" width="40" height="40"><circle cx="50" cy="50" r="48" class="ym-light"/><path d="M50 2a48 48 0 0 1 0 96 24 24 0 0 1 0-48 24 24 0 0 0 0-48" class="ym-dark"/><circle cx="50" cy="26" r="8" class="ym-seed-warm"/><circle cx="50" cy="74" r="8" class="ym-seed-cool"/></svg>
         </span>
-        <p class="footer__tag">Dream Create Real Estate Media<br /><span>Making homes fall in love with the camera.</span></p>
+        <p class="footer__name"><b class="w-dream">Dream</b> <i class="w-create">Create</i></p>
+        <p class="footer__tag">One dream, endless creations.</p>
       </div>
       <nav class="footer__nav" aria-label="Footer">
-        <a href="#services">Services</a>
-        <a href="#work">Portfolio</a>
-        <a href="#process">Process</a>
-        <a href="#about">About</a>
-        <a href="#contact">Contact</a>
+        <div><h5>Apps</h5>
+          <a href="https://dreamcreatestudio.com" target="_blank" rel="noopener">DreamCRM</a>
+          <a href="#contact">Dream Create Web</a>
+          <a href="#contact">Dream Towing</a>
+          <a href="apps/real-estate/index.html">Real Estate</a>
+        </div>
+        <div><h5>Studio</h5>
+          <a href="#duality">The Duality</a>
+          <a href="#philosophy">Philosophy</a>
+          <a href="#contact">Contact</a>
+        </div>
       </nav>
-      <div class="footer__social">
-        <a href="#" aria-label="Instagram" class="soc"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="3" width="18" height="18" rx="5" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="6.5" r="1.4" fill="currentColor"/></svg></a>
-        <a href="#" aria-label="YouTube" class="soc"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="2" y="5" width="20" height="14" rx="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 9l5 3-5 3z" fill="currentColor"/></svg></a>
-        <a href="mailto:hello@dreamcreatestudio.com" aria-label="Email" class="soc"><svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="18" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 7l8 6 8-6" fill="none" stroke="currentColor" stroke-width="2"/></svg></a>
-      </div>
     </div>
     <div class="footer__base">
-      <p>© <span id="year">2026</span> Dream Create Real Estate Media. Crafted with ♥ &amp; a little help from a puppy.</p>
-      <p class="footer__family">A sister studio to <a href="https://dreamcreatestudio.com" rel="noopener">Dream Create Studio</a>.</p>
-    </div>
-    <!-- little sleeping pup in the corner -->
-    <div class="footer__pup" aria-hidden="true">
-      <svg viewBox="0 0 120 60" width="120" height="60">
-        <ellipse cx="60" cy="50" rx="46" ry="8" fill="#000" opacity=".08"/>
-        <ellipse cx="60" cy="40" rx="40" ry="18" fill="#e0b978"/>
-        <ellipse cx="24" cy="40" rx="14" ry="12" fill="#e0b978"/>
-        <path d="M12 34c-6 0-8 10 0 12" fill="#c99a6a"/>
-        <path d="M22 34l-3-6 6 3z" fill="#c99a6a"/>
-        <circle cx="18" cy="40" r="1.6" fill="#3a3231"/>
-        <path d="M13 43c2 1 4 1 6 0" stroke="#3a3231" stroke-width="1.4" fill="none" stroke-linecap="round"/>
-        <text x="86" y="20" class="footer__z">z</text>
-        <text x="96" y="12" class="footer__z footer__z--2">z</text>
-      </svg>
+      <p>© <span id="year">2026</span> Dream Create. Built by Dustin, made beautiful by Courtney.</p>
+      <p>A husband &amp; wife studio ☾ ☀</p>
     </div>
   </footer>
 
-  <!-- Back to top: a house -->
   <button class="to-top" id="toTop" aria-label="Back to top">
-    <svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3 2 12h3v9h14v-9h3z" fill="currentColor"/></svg>
+    <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 5v14M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
   </button>
 
-  <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/app.js" defer></script>
 </body>
 </html>

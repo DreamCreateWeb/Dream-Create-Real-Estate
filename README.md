@@ -1,85 +1,82 @@
-# Dream Create Real Estate Media 🏡📸
+# Apps, by Dream Create ☯
 
-A fancy-but-cute marketing website for a real estate **photography & videography**
-studio — a sister brand to [Dream Create Studio](https://dreamcreatestudio.com).
+> One dream, endless creations.
 
-Built as a fast, dependency-free static site so it deploys anywhere (Vercel,
+The ecosystem hub for **Dream Create** — a husband-&-wife studio where
+**Dream** (Dustin) engineers the systems and **Create** (Courtney) gives
+them soul. A sister universe to [Dream Create Studio](https://dreamcreatestudio.com).
+
+Built as a fast, dependency-free static site — deploys anywhere (Vercel,
 Netlify, GitHub Pages, Cloudflare Pages) with zero build step.
 
-## ✨ Highlights
+## ✨ The concept — a living yin-yang
 
-- **Day / Night mode** — a sun/moon toggle in the nav (or click the little house!)
-  that lights up the windows, reveals stars & fireflies, and remembers your choice.
-- **Animated hero scene** — a charming house with glowing windows & chimney smoke,
-  drifting clouds, a floating aerial drone, a house-shaped hot-air balloon, a
-  swaying "Just Listed" sign, and a peeking puppy 🐶.
-- **House-themed interactivity everywhere:**
-  - Scroll progress rendered as a little house travelling across a build bar
-  - Portfolio filtering + click-to-open lightbox
-  - Draggable **before/after** virtual-staging slider
-  - A **mailbox contact form** — your letter literally flies into the mailbox,
-    the flag flips up, and confetti rains down on success
-  - Scroll-reveal animations, animated stat counters, cursor sparkle trail
-- **Fully responsive** and **accessible** — keyboard support, focus states,
-  `prefers-reduced-motion` respected, semantic HTML.
+The whole page *is* the duality. It flows between two halves:
+
+- **☾ Dream** — a cosmic night side (deep indigo, starlight, moon-silver) — Dustin's engineering, systems & platforms.
+- **☀ Create** — a luminous day side (cream, blush, clay, gold) — Courtney's design, photography & warmth.
+- **☯ The seam** — a twilight gradient where the two meet. **Dream Create Web** — which *builds and designs* — lives right here.
+
+Interactive touches:
+- A slowly-rotating **yin-yang emblem** with orbiting app-dots and a cursor-parallax.
+- The nav **adapts** (light/dark) as you scroll over each half.
+- A **balance toggle** (top-right orb) that shifts the yin-yang lead and remembers it.
+- Generated **starfields** on the Dream sections, warm **motes** on the Create sections.
+- A **cursor trail** — stars over dark areas, sparkles over light.
+- App cards with **3D tilt**, a validated contact form with a **stardust burst** on send.
+- Fully responsive & accessible (keyboard, focus states, `prefers-reduced-motion`, semantic HTML).
+
+## 🪐 The ecosystem
+
+| App | Half | Status | Notes |
+|-----|------|--------|-------|
+| **DreamCRM** | ☾ Dream | Live | Front-office platform for dental clinics → dreamcreatestudio.com |
+| **Dream Create Web** | ☯ Both | Live | Web studio that builds & hosts custom sites |
+| **Dream Towing** | ☾ Dream | Live | Dispatch/ops platform for towing companies |
+| **Dream Create \| Real Estate** | ☀ Create | New | Courtney's real estate photo & video → `apps/real-estate/` |
 
 ## 📁 Structure
 
 ```
-index.html            # all markup / sections
-assets/css/styles.css # design system + all styling & animations
-assets/js/main.js     # all interactivity (vanilla JS, no dependencies)
-assets/img/           # drop real photos & headshots here
+index.html              # Apps by Dream Create — the hub
+assets/css/app.css      # duality design system + animations
+assets/js/app.js        # all interactivity (vanilla JS)
+apps/
+  real-estate/          # ── the first "Create" extension ──
+    index.html          # Dream Create | Real Estate (full site)
+    assets/…            # its own styles & scripts
+    README.md
 ```
 
-## 🛠️ Make it hers — quick checklist
+The real estate site is a **self-contained extension**, linked from the
+apps grid. New apps can join the ecosystem the same way — a folder under
+`apps/` plus a card in `index.html`.
 
-Everything below is intentionally easy to find & swap:
+## 🛠️ Make it yours — quick checklist
 
-1. **Owner name & story** — search `index.html` for `[Her Name]` and the About
-   section copy.
-2. **Contact details** — search for `hello@dreamcreatestudio.com`,
-   `(555) 000-0000`, and `@dreamcreate.realestate`.
-3. **Real photos** — the portfolio uses styled gradient placeholders. Replace each
-   `<figure class="frame">` background with a real image, e.g.:
-   ```html
-   <figure class="frame" data-cat="interior">
-     <img src="assets/img/kitchen.jpg" alt="Chef's dream kitchen" />
-     <figcaption>…</figcaption>
-   </figure>
-   ```
-   (Add `.frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}`.)
-4. **Headshot** — replace the SVG in `.portrait-frame__photo` with
-   `<img src="assets/img/owner.jpg" alt="…">`.
-5. **Prices & services** — edit the `.svc-card` blocks.
-6. **Form delivery** — the form currently simulates sending. Wire it to a real
-   backend by adding an `action`/`method` or using
-   [Formspree](https://formspree.io) / [Netlify Forms](https://docs.netlify.com/forms/setup/).
-   Look for the note in `main.js` (section 10).
+1. **App details / links** — edit the `.app-card` blocks in `index.html`
+   (names, descriptions, `href`s, Live/New badges).
+2. **Contact** — search for `hello@dreamcreatestudio.com`.
+3. **Portraits** — the Duality section uses text-only cards; drop in real
+   photos of Dustin & Courtney if you'd like (swap the `.half__inner`).
+4. **Form delivery** — the form simulates sending. Wire it to
+   [Formspree](https://formspree.io) / [Netlify Forms](https://docs.netlify.com/forms/setup/)
+   (see the note in `app.js`, section 9).
 
 ## 🚀 Run locally
 
-Just open `index.html`, or serve it:
-
 ```bash
-python3 -m http.server 8000
-# then visit http://localhost:8000
+python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
-## 🎨 Brand palette
+## 🎨 Palette & type
 
-| Token     | Hex       | Use                     |
-|-----------|-----------|-------------------------|
-| Cream     | `#fbf3ea` | Background              |
-| Blush     | `#eab8b1` | Soft accent             |
-| Clay      | `#d98c6a` | Primary accent          |
-| Sage      | `#8da982` | Secondary accent        |
-| Gold      | `#e0b978` | Warm highlight          |
-| Plum      | `#5b3a4b` | Headings / deep detail  |
+**Dream:** indigo `#5b57c8` · violet `#8f7fe0` · starlight `#f4d98a` · deep `#0c0b22`
+**Create:** cream `#fbf3ea` · clay `#d98c6a` · gold `#e6b877` · plum `#3a2b4a`
+**Seam (twilight):** violet → magenta `#c56b8a` → coral → gold
 
-Fonts: **Fraunces** (fancy serif display), **Nunito** (rounded body),
-**Caveat** (handwritten accents).
+Fonts: **Space Grotesk** (display), **Inter** (body), **Fraunces** (italic accents).
 
 ---
 
-Made with ♥ (and a little help from a puppy).
+Built by Dustin, made beautiful by Courtney. ☾ ☀
