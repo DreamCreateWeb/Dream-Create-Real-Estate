@@ -13,17 +13,21 @@ Netlify, GitHub Pages, Cloudflare Pages) with zero build step.
 
 The whole page *is* the duality. It flows between two halves:
 
-- **☾ Dream** — a cosmic night side (deep indigo, starlight, moon-silver) — Dustin's engineering, systems & platforms.
-- **☀ Create** — a luminous day side (cream, blush, clay, gold) — Courtney's design, photography & warmth.
-- **☯ The seam** — a twilight gradient where the two meet. **Dream Create Web** — which *builds and designs* — lives right here.
+- **Dream** — a cosmic night side (near-black, muted indigo, starlight, brass) — Dustin's engineering, systems & platforms.
+- **Create** — a luminous day side (warm parchment, ink, brass) — Courtney's design, photography & warmth.
+- **The seam** — a filmic twilight gradient where the two meet. **Dream Create Web** — which *builds and designs* — lives right here.
 
-Interactive touches:
-- A slowly-rotating **yin-yang emblem** with orbiting app-dots and a cursor-parallax.
+The execution is deliberately **editorial / filmic** — restrained, textural,
+grown-up. No emoji, no candy gradients, no bouncy motion.
+
+Design touches:
+- A refined, slowly-rotating **celestial yin-yang** — a day/night terminator with a tiny sun & crescent moon, rendered with grain and a luminous seam.
+- A global **film-grain** overlay, drifting **haze**, and a filmic **vignette** for depth.
+- **Fraunces** high-contrast serif display, **Inter** body, **IBM Plex Mono** for numbered section labels — with custom hairline SVG icons throughout.
 - The nav **adapts** (light/dark) as you scroll over each half.
-- A **balance toggle** (top-right orb) that shifts the yin-yang lead and remembers it.
-- Generated **starfields** on the Dream sections, warm **motes** on the Create sections.
-- A **cursor trail** — stars over dark areas, sparkles over light.
-- App cards with **3D tilt**, a validated contact form with a **stardust burst** on send.
+- A **balance toggle** that shifts the yin-yang lead and remembers it.
+- Sparse **starfields** on the Dream sections; slow, expensive easing everywhere.
+- Underline-only form fields, a validated contact form with an elegant success state.
 - Fully responsive & accessible (keyboard, focus states, `prefers-reduced-motion`, semantic HTML).
 
 ## 🪐 The ecosystem
@@ -71,11 +75,11 @@ python3 -m http.server 8000   # then visit http://localhost:8000
 
 ## 🎨 Palette & type
 
-**Dream:** indigo `#5b57c8` · violet `#8f7fe0` · starlight `#f4d98a` · deep `#0c0b22`
-**Create:** cream `#fbf3ea` · clay `#d98c6a` · gold `#e6b877` · plum `#3a2b4a`
-**Seam (twilight):** violet → magenta `#c56b8a` → coral → gold
+**Dream (night):** near-black `#0a0a0f` · muted indigo haze · bone `#e9e6df` · brass `#c6a15b`
+**Create (day):** parchment `#e7e0d3` · ink `#1a1620` · brass-deep `#9a6a34`
+**Seam (twilight):** filmic dusk — deep aubergine → mauve → warm sand
 
-Fonts: **Space Grotesk** (display), **Inter** (body), **Fraunces** (italic accents).
+Fonts: **Fraunces** (high-contrast serif display), **Inter** (body), **IBM Plex Mono** (labels).
 
 ---
 
