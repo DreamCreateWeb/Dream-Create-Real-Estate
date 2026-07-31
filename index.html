@@ -17,6 +17,15 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
 
   <link rel="stylesheet" href="assets/css/app.css" />
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./assets/vendor/three.module.js",
+      "three/addons/": "./assets/vendor/jsm/"
+    }
+  }
+  </script>
 </head>
 <body class="is-loading">
   <!-- WebGL dreamworld -->
@@ -28,6 +37,13 @@
     <div class="sky-fallback__cloud c3"></div>
   </div>
   <div class="vignette" aria-hidden="true"></div>
+  <div class="cursor" id="cursor" aria-hidden="true"></div>
+
+  <!-- Ambient sound toggle -->
+  <button class="sound" id="soundToggle" aria-label="Toggle ambient sound" aria-pressed="false">
+    <span class="sound__bars"><span></span><span></span><span></span><span></span></span>
+    <span class="sound__label">sound</span>
+  </button>
 
   <!-- Loader -->
   <div class="loader" id="loader" aria-hidden="true">

@@ -8,15 +8,22 @@ teals, passing glowing "waypoints" for each app.
 
 ## ✨ What it is
 
-- A full-screen **Three.js** dreamworld — a gradient sky shader, hundreds of
-  soft volumetric cloud sprites, a glowing sun, drifting light-motes, and a
-  luminous orb for each app.
-- **Scroll drives a flight** through the clouds; the camera banks along a
-  gentle path and sways with the mouse (parallax).
+- A full-screen **Three.js** dreamworld — a gradient sky shader, volumetric
+  cloud sprites, a **sea of clouds** below you, a glowing sun & moon, stars,
+  drifting light-motes, and a luminous **bloom-lit orb** for each app.
+- **A day → dusk → starlit-night journey**: as you scroll down, the sky, fog
+  and clouds morph from bright day into a moonlit, starry night.
+- **Scroll drives a flight** through the clouds; the camera banks along a path,
+  sways with the mouse (parallax), and **frames each app** as you arrive
+  (the orb blooms and its rings spin up).
+- A **break-through-the-clouds intro**, a glowing custom **cursor**, and an
+  opt-in **ambient soundscape** (generated live via WebAudio — off by default).
+- Real **bloom** postprocessing (`UnrealBloomPass`) for the glow.
 - Content floats over the scene as **frosted-glass cards** — legible over any
   cloud thanks to soft scrims and backdrop blur.
-- **Self-contained**: Three.js is vendored locally (`assets/vendor/`), so it
-  works offline and deploys anywhere with **no build step**.
+- **Self-contained**: Three.js + postprocessing are vendored locally
+  (`assets/vendor/`) via an import-map, so it works offline and deploys
+  anywhere with **no build step**.
 - **Graceful fallback**: no WebGL or `prefers-reduced-motion` → a static CSS
   cloud-sky, with all content fully readable and accessible.
 
