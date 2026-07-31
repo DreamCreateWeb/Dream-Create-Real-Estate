@@ -1,86 +1,72 @@
-# Apps, by Dream Create ☯
+# Dream Create — the dreamworld ☁️
 
-> One dream, endless creations.
+> One dream, endless creations. A WebGL cloud-flight through the things Dustin has built.
 
-The ecosystem hub for **Dream Create** — a husband-&-wife studio where
-**Dream** (Dustin) engineers the systems and **Create** (Courtney) gives
-them soul. A sister universe to [Dream Create Studio](https://dreamcreatestudio.com).
+A personal showcase for **Dustin / Dream Create**, built as an immersive
+3D experience: you drift down through a volumetric cloudscape in blues and
+teals, passing glowing "waypoints" for each app.
 
-Built as a fast, dependency-free static site — deploys anywhere (Vercel,
-Netlify, GitHub Pages, Cloudflare Pages) with zero build step.
+## ✨ What it is
 
-## ✨ The concept — a living yin-yang
+- A full-screen **Three.js** dreamworld — a gradient sky shader, hundreds of
+  soft volumetric cloud sprites, a glowing sun, drifting light-motes, and a
+  luminous orb for each app.
+- **Scroll drives a flight** through the clouds; the camera banks along a
+  gentle path and sways with the mouse (parallax).
+- Content floats over the scene as **frosted-glass cards** — legible over any
+  cloud thanks to soft scrims and backdrop blur.
+- **Self-contained**: Three.js is vendored locally (`assets/vendor/`), so it
+  works offline and deploys anywhere with **no build step**.
+- **Graceful fallback**: no WebGL or `prefers-reduced-motion` → a static CSS
+  cloud-sky, with all content fully readable and accessible.
 
-The whole page *is* the duality. It flows between two halves:
+## 🪐 The apps (the waypoints)
 
-- **Dream** — a cosmic night side (near-black, muted indigo, starlight, brass) — Dustin's engineering, systems & platforms.
-- **Create** — a luminous day side (warm parchment, ink, brass) — Courtney's design, photography & warmth.
-- **The seam** — a filmic twilight gradient where the two meet. **Dream Create Web** — which *builds and designs* — lives right here.
-
-The execution is deliberately **editorial / filmic** — restrained, textural,
-grown-up. No emoji, no candy gradients, no bouncy motion.
-
-Design touches:
-- A refined, slowly-rotating **celestial yin-yang** — a day/night terminator with a tiny sun & crescent moon, rendered with grain and a luminous seam.
-- A global **film-grain** overlay, drifting **haze**, and a filmic **vignette** for depth.
-- **Fraunces** high-contrast serif display, **Inter** body, **IBM Plex Mono** for numbered section labels — with custom hairline SVG icons throughout.
-- The nav **adapts** (light/dark) as you scroll over each half.
-- A **balance toggle** that shifts the yin-yang lead and remembers it.
-- Sparse **starfields** on the Dream sections; slow, expensive easing everywhere.
-- Underline-only form fields, a validated contact form with an elegant success state.
-- Fully responsive & accessible (keyboard, focus states, `prefers-reduced-motion`, semantic HTML).
-
-## 🪐 The ecosystem
-
-| App | Half | Status | Notes |
-|-----|------|--------|-------|
-| **DreamCRM** | ☾ Dream | Live | Front-office platform for dental clinics → dreamcreatestudio.com |
-| **Dream Create Web** | ☯ Both | Live | Web studio that builds & hosts custom sites |
-| **Dream Towing** | ☾ Dream | Live | Dispatch/ops platform for towing companies |
-| **Dream Create \| Real Estate** | ☀ Create | New | Courtney's real estate photo & video → `apps/real-estate/` |
+| App | What it is | Link |
+|-----|-----------|------|
+| **DreamCRM** | Front-office platform for dental clinics | dreamcreatestudio.com |
+| **Dream Create Web** | Studio that builds & hosts custom sites | (contact) |
+| **Dream Towing** | Dispatch/ops platform for towing companies | (contact) |
+| **Dream Create Real Estate** | Courtney's real estate photo & video | `apps/real-estate/` |
 
 ## 📁 Structure
 
 ```
-index.html              # Apps by Dream Create — the hub
-assets/css/app.css      # duality design system + animations
-assets/js/app.js        # all interactivity (vanilla JS)
+index.html               # the dreamworld
+assets/css/app.css       # glass UI, scenes, fallback sky
+assets/js/app.js         # Three.js scene + UI (ES module)
+assets/vendor/
+  three.module.js        # vendored Three.js r160 (MIT)
 apps/
-  real-estate/          # ── the first "Create" extension ──
-    index.html          # Dream Create | Real Estate (full site)
-    assets/…            # its own styles & scripts
-    README.md
+  real-estate/           # Courtney's site — a live "Create" extension
 ```
 
-The real estate site is a **self-contained extension**, linked from the
-apps grid. New apps can join the ecosystem the same way — a folder under
-`apps/` plus a card in `index.html`.
+## 🛠️ Make it yours
 
-## 🛠️ Make it yours — quick checklist
-
-1. **App details / links** — edit the `.app-card` blocks in `index.html`
-   (names, descriptions, `href`s, Live/New badges).
+1. **App copy / links** — edit the `<article class="card">` blocks in `index.html`.
 2. **Contact** — search for `hello@dreamcreatestudio.com`.
-3. **Portraits** — the Duality section uses text-only cards; drop in real
-   photos of Dustin & Courtney if you'd like (swap the `.half__inner`).
-4. **Form delivery** — the form simulates sending. Wire it to
+3. **The dream, tuned** — in `assets/js/app.js`, the top of `initDream()` has
+   the knobs: `CLOUD_COUNT`, fog density/colour, sun position, the sky-shader
+   colours, and the `APP` waypoint positions/colours.
+4. **Form delivery** — the form simulates sending; wire it to
    [Formspree](https://formspree.io) / [Netlify Forms](https://docs.netlify.com/forms/setup/)
-   (see the note in `app.js`, section 9).
+   (see the note in `app.js`).
 
 ## 🚀 Run locally
+
+ES modules need HTTP (not `file://`):
 
 ```bash
 python3 -m http.server 8000   # then visit http://localhost:8000
 ```
 
-## 🎨 Palette & type
+## 🎨 Palette
 
-**Dream (night):** near-black `#0a0a0f` · muted indigo haze · bone `#e9e6df` · brass `#c6a15b`
-**Create (day):** parchment `#e7e0d3` · ink `#1a1620` · brass-deep `#9a6a34`
-**Seam (twilight):** filmic dusk — deep aubergine → mauve → warm sand
+Sky-deep `#0c2a55` · sky-mid `#1f5fa8` · teal `#2fa9c9` · bright teal `#7fe3f0` ·
+cloud `#eaf6ff` · a soft dawn glow at the horizon.
 
-Fonts: **Fraunces** (high-contrast serif display), **Inter** (body), **IBM Plex Mono** (labels).
+Fonts: **Cormorant Garamond** (airy display) · **Inter** (UI).
 
 ---
 
-Built by Dustin, made beautiful by Courtney. ☾ ☀
+Dreamed up & built by Dustin · made beautiful with Courtney.
