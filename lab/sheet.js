@@ -14,14 +14,14 @@ const TMP = '/tmp/claude-0/-home-user-Dream-Create-Real-Estate/8e82b1ec-b208-5a9
 
 // azimuth, elevation(deg), zoom, label
 const VIEWS = [
-  [0,    2,  1.0, 'front'],
-  [90,   2,  1.0, 'side R'],
-  [180,  2,  1.0, 'back'],
-  [270,  2,  1.0, 'side L'],
-  [40,   22, 1.0, '3/4 high'],
-  [40,   22, 2.0, '3/4 close'],
-  [220,  22, 1.0, 'rear 3/4'],
-  [0,    82, 1.0, 'top'],
+  [90,   2,  1.0, 'FRONT'],
+  [180,  2,  1.0, 'left'],
+  [270,  2,  1.0, 'back'],
+  [0,    2,  1.0, 'right'],
+  [125,  20, 1.0, 'front 3/4'],
+  [125,  16, 2.1, 'entrance'],
+  [305,  22, 1.0, 'rear 3/4'],
+  [90,   82, 1.0, 'top'],
 ];
 
 (async () => {
