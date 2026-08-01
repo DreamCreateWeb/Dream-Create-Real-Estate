@@ -318,7 +318,7 @@ async function parts({ loadGLB, partList, debugBands }) {
    dreamcreatestudio.com.
    ========================================================= */
 export const DREAMCRM = {
-  surface:  0xf4f7fd,   // near-white facade  (--color-surface-1 #f8faff)
+  surface:  0xd9e0ee,   // facade — pulled off pure white so form reads
   ink:      0x1a2440,   // deep navy          (--color-ink-900)
   inkSoft:  0x33405f,   // (--color-ink-700)
   accent:   0x4c7df0,   // brand blue         (27x in the site CSS)
@@ -328,7 +328,7 @@ export const DREAMCRM = {
 /* modular-kit palette strips, verified with ?bands=1:
    0 = awnings · 3 = detail/AC · 5 = window glass · 6 = roof · 7 = wall */
 const MOD_BANDS = {
-  7: DREAMCRM.surface,
+  7: 0xdfe6f2,
   5: DREAMCRM.glassLit,
   6: DREAMCRM.ink,
   0: DREAMCRM.accent,
@@ -371,15 +371,17 @@ async function clinic({ loadGLB, debugBands }) {
     return t;
   };
   const mat = {
-    wall:    new THREE.MeshStandardMaterial({ color: DREAMCRM.surface, roughness: 0.85 }),
+    wall:    new THREE.MeshStandardMaterial({ color: DREAMCRM.surface, roughness: 0.88 }),
+    wall2:   new THREE.MeshStandardMaterial({ color: 0xc3ccdd, roughness: 0.9 }),
     ink:     new THREE.MeshStandardMaterial({ color: DREAMCRM.ink, roughness: 0.8 }),
     inkSoft: new THREE.MeshStandardMaterial({ color: DREAMCRM.inkSoft, roughness: 0.85 }),
     accent:  new THREE.MeshStandardMaterial({ color: DREAMCRM.accent, roughness: 0.45, metalness: 0.12 }),
     mullion: new THREE.MeshStandardMaterial({ color: 0x2b3654, roughness: 0.4, metalness: 0.55 }),
     glass:   new THREE.MeshStandardMaterial({
-      color: 0x16233f, roughness: 0.06, metalness: 0.5,
-      transparent: true, opacity: 0.62, emissive: 0x27406e, emissiveIntensity: 0.5 }),
-    warm:    new THREE.MeshStandardMaterial({ color: 0xffe6bd, emissive: 0xffcf94, emissiveIntensity: 1.5, roughness: 0.9 }),
+      color: 0x223b5e, roughness: 0.1, metalness: 0.25,
+      transparent: true, opacity: 0.2, emissive: 0x243a63, emissiveIntensity: 0.3,
+      depthWrite: false }),
+    warm:    new THREE.MeshStandardMaterial({ color: 0xffeacb, emissive: 0xffc98a, emissiveIntensity: 2.6, roughness: 0.9 }),
   };
   const box = (w, h, d, m) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.castShadow = true; o.receiveShadow = true; return o; };
   const put = (o, x, y, z) => { o.position.set(x, y, z); g.add(o); return o; };
@@ -429,10 +431,33 @@ async function clinic({ loadGLB, debugBands }) {
   const LOB_W = 2 * CELL, LOB_Z = halfZ - 0.45;           // set back from the facade
   // back wall of the recess (so we never see through the building)
   put(box(LOB_W, TOP, 0.08, mat.inkSoft), 0, 0.09 + TOP / 2, LOB_Z - 0.06);
-  // warm interior, visible through the glass
-  const glow = put(box(LOB_W - 0.16, TOP - 0.18, 0.04, mat.warm), 0, 0.09 + TOP / 2, LOB_Z - 0.02);
-  const lobbyLight = new THREE.PointLight(0xffd6a0, 3.2, 4.5, 2);
-  put(lobbyLight, 0, 0.09 + TOP * 0.55, LOB_Z + 0.35);
+  // ---- lobby interior: floor, ceiling, reception desk, columns, backlit wall ----
+  const inFloorY = 0.09 + 0.02, inDepth = 0.42;
+  const woodMat = new THREE.MeshStandardMaterial({ color: 0xb8916a, roughness: 0.75 });
+  put(box(LOB_W - 0.1, 0.03, inDepth, woodMat), 0, inFloorY, LOB_Z - inDepth / 2 + 0.02);
+  // backlit feature wall (the warm source)
+  put(box(LOB_W - 0.24, TOP * 0.8, 0.03, mat.warm), 0, 0.09 + TOP * 0.48, LOB_Z - 0.05);
+  // ceiling cove + downlights spilling onto the floor
+  put(box(LOB_W - 0.3, 0.03, 0.3, mat.warm), 0, 0.09 + TOP - 0.1, LOB_Z - 0.18);
+  // ceiling with a recessed cove
+  put(box(LOB_W - 0.1, 0.035, inDepth, mat.wall), 0, 0.09 + TOP - 0.06, LOB_Z - inDepth / 2 + 0.02);
+  // reception desk
+  const deskMat = new THREE.MeshStandardMaterial({ color: DREAMCRM.ink, roughness: 0.6 });
+  put(box(0.9, 0.2, 0.16, deskMat), -0.15, 0.09 + 0.12, LOB_Z - 0.16);
+  put(box(0.96, 0.03, 0.2, mat.accent), -0.15, 0.09 + 0.225, LOB_Z - 0.16);
+  // two slim interior columns
+  [-0.62, 0.62].forEach((cx) => {
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, TOP - 0.1, 10), mat.wall);
+    put(col, cx, 0.09 + (TOP - 0.1) / 2, LOB_Z - 0.2);
+  });
+  // seating blocks
+  [[0.66, -0.3], [0.66, -0.05]].forEach(([sx, sz]) => put(box(0.16, 0.09, 0.16, mat.inkSoft), sx, 0.09 + 0.07, LOB_Z + sz));
+  const lobbyLight = new THREE.PointLight(0xffd6a0, 5.5, 5.0, 2);
+  put(lobbyLight, 0, 0.09 + TOP * 0.6, LOB_Z + 0.2);
+  const lobbyLight2 = new THREE.PointLight(0xffe0b0, 3.0, 3.0, 2);
+  put(lobbyLight2, 0, 0.09 + 0.35, LOB_Z - 0.08);
+  const spill = new THREE.PointLight(0xffd9a8, 2.2, 3.2, 2);
+  put(spill, 0, 0.09 + 0.18, halfZ + 0.3);
   // reveals: side walls + soffit of the recess
   [-1, 1].forEach((s) => put(box(0.08, TOP, 0.45, mat.wall), s * (LOB_W / 2 + 0.04), 0.09 + TOP / 2, LOB_Z + 0.225));
   put(box(LOB_W + 0.16, 0.08, 0.45, mat.wall), 0, 0.09 + TOP + 0.04, LOB_Z + 0.225);
@@ -450,14 +475,21 @@ async function clinic({ loadGLB, debugBands }) {
   [-1, 1].forEach((s) => put(box(FR, TOP + FR, 0.5, mat.accent), s * (LOB_W / 2 + FR / 2), 0.09 + (TOP + FR) / 2 - FR / 2, portalZ - 0.25));
   put(box(LOB_W + FR * 2, FR, 0.5, mat.accent), 0, 0.09 + TOP + FR / 2, portalZ - 0.25);
 
+  // ---------- raised entrance volume: vertical accent over the lobby ----------
+  const TOW_H = 0.5, TOW_W = LOB_W + FR * 2 + 0.3, TOW_D = 0.62;
+  const towZ = halfZ - TOW_D / 2 + 0.06;
+  put(box(TOW_W, TOW_H, TOW_D, mat.wall2), 0, 0.09 + TOP + TOW_H / 2, towZ);
+  put(box(TOW_W + 0.08, 0.05, TOW_D + 0.08, mat.accent), 0, 0.09 + TOP + TOW_H + 0.02, towZ);
+  // slim blue reveal down each side of the tower
+  [-1, 1].forEach((s) => put(box(0.045, TOW_H * 0.8, TOW_D + 0.02, mat.accent),
+    s * (TOW_W / 2 - 0.06), 0.09 + TOP + TOW_H * 0.45, towZ));
+
   // ---------- entrance canopy ----------
   const canY = 0.09 + STOREY * 1.02;
-  put(box(LOB_W + 0.7, 0.035, 0.6, mat.accent), 0, canY, halfZ + 0.24);
-  put(box(LOB_W + 0.7, 0.05, 0.05, mat.mullion), 0, canY - 0.03, halfZ + 0.52);   // leading edge
-  [-1, 1].forEach((s) => {                                                          // tension rods back to the wall
-    const rod = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.62, 8), mat.mullion);
-    rod.rotation.x = -0.72; rod.castShadow = true;
-    put(rod, s * (LOB_W / 2 + 0.22), canY + 0.2, halfZ + 0.3);
+  put(box(LOB_W + 0.25, 0.03, 0.42, mat.accent), 0, canY + 0.06, halfZ + 0.17);
+  put(box(LOB_W + 0.25, 0.035, 0.035, mat.mullion), 0, canY + 0.045, halfZ + 0.37);   // leading edge
+  [-1, 1].forEach((s) => {                                    // neat brackets under the blade
+    put(box(0.03, 0.16, 0.2, mat.mullion), s * (LOB_W / 2 - 0.05), canY - 0.02, halfZ + 0.06);
   });
 
   // ---------- steps + forecourt ----------
@@ -483,9 +515,34 @@ async function clinic({ loadGLB, debugBands }) {
     shrub.castShadow = true; put(shrub, s * (LOB_W / 2 + 0.75), 0.36, halfZ + 0.42);
   });
 
+  // ---------- accessible ramp beside the steps ----------
+  const rampMat = new THREE.MeshStandardMaterial({ color: 0xc2cadb, roughness: 0.95 });
+  const ramp = box(0.72, 0.035, 1.15, rampMat);
+  ramp.rotation.x = -0.075; put(ramp, LOB_W / 2 + 0.95, 0.075, halfZ + 0.62);
+  [-1, 1].forEach((s) => {
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.15, 8), mat.mullion);
+    rail.rotation.x = Math.PI / 2 - 0.075;
+    put(rail, LOB_W / 2 + 0.95 + s * 0.33, 0.24, halfZ + 0.62);
+    [-0.45, 0.45].forEach((o) => {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.2, 8), mat.mullion);
+      put(p, LOB_W / 2 + 0.95 + s * 0.33, 0.15, halfZ + 0.62 + o);
+    });
+  });
+  // bollards along the forecourt edge
+  [-2.2, -1.6, 1.6, 2.2].forEach((bx) => {
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.26, 10), mat.inkSoft);
+    b.castShadow = true; put(b, bx, 0.2, halfZ + 1.85);
+    put(box(0.1, 0.02, 0.1, mat.accent), bx, 0.335, halfZ + 1.85);
+  });
+  // bike rack
+  [0, 0.28].forEach((o) => {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.014, 8, 16, Math.PI), mat.mullion);
+    hoop.castShadow = true; put(hoop, -2.6, 0.07, halfZ + 1.0 + o);
+  });
+
   // ---------- projecting upper volume on one wing (breaks the box) ----------
   const wingW = 2 * CELL;
-  put(box(wingW, STOREY * 0.92, 0.3, mat.wall), -halfX + wingW / 2 + 0.2, 0.09 + STOREY * 1.5, halfZ + 0.15);
+  put(box(wingW, STOREY * 0.92, 0.3, mat.wall2), -halfX + wingW / 2 + 0.2, 0.09 + STOREY * 1.5, halfZ + 0.15);
   put(box(wingW, 0.05, 0.34, mat.accent), -halfX + wingW / 2 + 0.2, 0.09 + STOREY * 1.96, halfZ + 0.17);
 
   // ---------- vertical fins: rhythm across the long elevations ----------
@@ -509,6 +566,28 @@ async function clinic({ loadGLB, debugBands }) {
   // ---------- shadow reveal at the base (grounds the building) ----------
   put(box(W * CELL + 0.02, 0.07, D * CELL + 0.02, mat.ink), 0, 0.115, 0);
 
+  // ---------- service side: stops the back/left reading as wallpaper ----------
+  const doorMat = new THREE.MeshStandardMaterial({ color: DREAMCRM.inkSoft, roughness: 0.6, metalness: 0.3 });
+  // staff/service door + small canopy on the back elevation
+  put(box(0.42, STOREY * 0.74, 0.05, doorMat), -1.4, 0.09 + STOREY * 0.37, -halfZ - 0.03);
+  put(box(0.62, 0.035, 0.24, mat.accent), -1.4, 0.09 + STOREY * 0.8, -halfZ - 0.14);
+  // condenser bank + screen on a concrete pad at the rear
+  const padMat = new THREE.MeshStandardMaterial({ color: 0x9aa3b5, roughness: 0.96 });
+  put(box(1.5, 0.04, 0.7, padMat), 1.2, 0.03, -halfZ - 0.45);
+  [0.75, 1.2, 1.65].forEach((cx) => {
+    put(box(0.34, 0.28, 0.34, mat.inkSoft), cx, 0.19, -halfZ - 0.45);
+    const fan = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 12), mat.mullion);
+    put(fan, cx, 0.335, -halfZ - 0.45);
+  });
+  // louvred screen wall hiding the plant
+  for (let i = 0; i < 6; i++)
+    put(box(1.7, 0.035, 0.02, mat.wall), 1.2, 0.1 + i * 0.07, -halfZ - 0.78);
+  [-1, 1].forEach((s) => put(box(0.05, 0.48, 0.05, mat.inkSoft), 1.2 + s * 0.85, 0.26, -halfZ - 0.78));
+
+  // secondary/emergency exit on the left elevation
+  put(box(0.05, STOREY * 0.72, 0.4, doorMat), -halfX - 0.03, 0.09 + STOREY * 0.36, -0.6);
+  put(box(0.2, 0.03, 0.55, mat.accent), -halfX - 0.12, 0.09 + STOREY * 0.78, -0.6);
+
   // ---------- roof deck + parapet ----------
   const roofY = 0.09 + TOP;
   const spanX = W * CELL, spanZ = D * CELL;
@@ -523,6 +602,12 @@ async function clinic({ loadGLB, debugBands }) {
     put(box(t * 1.3, 0.022, d, mat.accent), ox, roofY + PH, oz);
   });
   [[1.4, -0.5], [-1.7, 0.4]].forEach(([ax, az]) => { const o = use("ac"); if (o) put(o, ax, roofY + 0.06, az); });
+  // rooftop plant enclosure + access hatch
+  put(box(1.15, 0.34, 0.8, mat.wall), 0.5, roofY + 0.23, -0.9);
+  put(box(1.19, 0.03, 0.84, mat.accent), 0.5, roofY + 0.41, -0.9);
+  put(box(0.42, 0.16, 0.42, mat.inkSoft), -1.9, roofY + 0.14, -1.0);
+  // roof-edge drainage scuppers
+  [-2.0, 2.0].forEach((sx) => put(box(0.12, 0.05, 0.1, mat.mullion), sx, roofY + 0.09, spanZ / 2 - 0.02));
 
   // inter-storey brand band on the side/back elevations
   [[spanZ / 2 + 0.01, spanX, 0.02, 0, 1], [-spanZ / 2 - 0.01, spanX, 0.02, 0, 1]].forEach(([oz, w, t, ox]) => {
@@ -534,17 +619,23 @@ async function clinic({ loadGLB, debugBands }) {
 
   // ---------- signage: fascia + pylon ----------
   const t1 = signTexture("Dream Dental", "powered by DreamCRM");
-  const fascia = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.62),
-    new THREE.MeshStandardMaterial({ map: t1, emissiveMap: t1, emissive: 0xffffff, emissiveIntensity: 1.2, roughness: 0.6 }));
-  put(fascia, -halfX + wingW / 2 + 0.2, 0.09 + STOREY * 1.5, halfZ + 0.31);
+  const fascia = new THREE.Mesh(new THREE.PlaneGeometry(2.15, 0.42),
+    new THREE.MeshStandardMaterial({ map: t1, emissiveMap: t1, emissive: 0xffffff, emissiveIntensity: 1.25, roughness: 0.6 }));
+  put(fascia, 0, 0.09 + TOP + TOW_H * 0.52, halfZ + 0.075);
+  const signLight = new THREE.PointLight(0x9dc0ff, 1.4, 2.6, 2);
+  put(signLight, 0, 0.09 + TOP + TOW_H * 0.5, halfZ + 0.5);
 
   const pylonX = halfX + 0.55;
   put(box(0.16, 1.55, 0.16, mat.ink), pylonX, 0.09 + 0.775, halfZ + 0.5);
   const t2 = signTexture("Dream", "Dental");
-  const pyl = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.62),
-    new THREE.MeshStandardMaterial({ map: t2, emissiveMap: t2, emissive: 0xffffff, emissiveIntensity: 1.3, roughness: 0.6 }));
-  pyl.rotation.y = Math.PI / 2;
-  put(pyl, pylonX - 0.085, 0.09 + 1.15, halfZ + 0.5);
+  const pylMat = new THREE.MeshStandardMaterial({ map: t2, emissiveMap: t2, emissive: 0xffffff, emissiveIntensity: 1.5, roughness: 0.6, side: THREE.DoubleSide });
+  [1, -1].forEach((s) => {
+    const pyl = new THREE.Mesh(new THREE.PlaneGeometry(0.58, 0.58), pylMat);
+    pyl.rotation.y = s * Math.PI / 2;
+    put(pyl, pylonX + s * 0.085, 0.09 + 1.12, halfZ + 0.5);
+  });
+  const pylLight = new THREE.PointLight(0x9dc0ff, 1.2, 2.2, 2);
+  put(pylLight, pylonX, 0.09 + 1.12, halfZ + 0.9);
 
   const wash = new THREE.PointLight(DREAMCRM.accent, 2.0, 5.5, 2);
   put(wash, 0, 0.09 + TOP * 0.85, halfZ + 1.0);
