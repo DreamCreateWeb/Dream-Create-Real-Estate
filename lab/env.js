@@ -101,6 +101,26 @@ function fit(obj, targetHeight) {
   obj.scale.setScalar(targetHeight / (size.y || 1));
   return obj;
 }
+/* place object at (x,z) and sit it exactly on y=0 (models have varied ymin) */
+function place(obj, x, z, ry = 0) {
+  obj.rotation.y = ry;
+  obj.position.set(x, 0, z);
+  obj.updateMatrixWorld(true);
+  const b = new THREE.Box3().setFromObject(obj);
+  obj.position.y = -b.min.y;
+  return obj;
+}
+/* recolor only the 'body' mesh so wheels/glass/trim keep their own colours */
+function tintBody(obj, color) {
+  obj.traverse((o) => {
+    if (!o.isMesh) return;
+    if (!/body|cabin|chassis/i.test(o.name)) return;
+    o.material = o.material.clone();
+    o.material.color = new THREE.Color(color);
+  });
+  return obj;
+}
+const CAR_COLORS = [0xff8a80, 0x8fb6ff, 0x8fd8c0, 0xf2ece0, 0xc9a8e0, 0xffc774, 0x9aa8c0, 0xff9db0];
 const safeLoad = (kit, n) => load(kit, n).catch(() => null);
 const loadMany = async (kit, names) => (await Promise.all(names.map((n) => safeLoad(kit, n)))).filter(Boolean);
 
@@ -215,18 +235,19 @@ async function buildHood() {
   lots.forEach((l) => {
     if (Math.abs(l.z) < 7 || !houses.length) return;
     const h = clone(pick(houses)); fit(h, rnd(4.6, 6.4));
-    h.position.set(l.x, 0, l.z); h.rotation.y = l.ry; scene.add(h);
+    place(h, l.x, l.z, l.ry); scene.add(h);
     windowGlow(h, 0, l.z, 3);
     const side = l.x > 0 ? -1 : 1;
-    const dv = strip(2.6, 6, concreteMat(3), .04);
-    dv.position.set(l.x + side * 4.2, .04, l.z + 3.4); scene.add(dv);
+    const dv = strip(7.5, 3.0, concreteMat(3), .04);       // long along X = toward the road
+    dv.position.set(l.x + side * 5.6, .04, l.z + 3.2); scene.add(dv);
     if (cars.length && Math.random() < .55) {
-      const c = clone(pick(cars)); fit(c, 1.5);
-      c.position.set(l.x + side * 4.2, 0, l.z + 3.4); c.rotation.y = (Math.PI / 2) * side; scene.add(c);
+      const c = tintBody(clone(pick(cars)), pick(CAR_COLORS)); fit(c, 1.5);
+      place(c, l.x + side * 5.2, l.z + 3.2, (Math.PI / 2) * side);   // +Z is the model's nose
+      scene.add(c);
     }
     if (trees.length) for (let i = 0; i < 2; i++) {
       const t = clone(pick(trees)); fit(t, rnd(3.4, 5.2));
-      t.position.set(l.x + side * rnd(2.5, 5.5), 0, l.z + rnd(-5, 5)); t.rotation.y = Math.random() * 7; scene.add(t);
+      place(t, l.x + side * rnd(2.5, 5.5), l.z + rnd(-5, 5), Math.random() * 7); scene.add(t);
     }
   });
   for (let z = -48; z <= 48; z += 16) {
@@ -234,12 +255,14 @@ async function buildHood() {
     const b = streetLamp(); b.position.set(6.8, 0, z + 8); scene.add(b);
   }
   if (trees.length) for (let z = -55; z <= 55; z += 11) [-9, 9].forEach((x) => {
-    const t = clone(pick(trees)); fit(t, rnd(3.6, 5.4)); t.position.set(x, 0, z + 4); t.rotation.y = Math.random() * 7; scene.add(t);
+    const t = clone(pick(trees)); fit(t, rnd(3.6, 5.4)); place(t, x, z + 4, Math.random() * 7); scene.add(t);
   });
   const traffic = [];
-  if (cars.length) [[-2, -24, Math.PI / 2], [2, 28, -Math.PI / 2]].forEach(([x, z, ry]) => {
-    const c = clone(pick(cars)); fit(c, 1.5); c.position.set(x, 0, z); c.rotation.y = ry; scene.add(c);
-    traffic.push({ c, dir: ry > 0 ? 1 : -1 });
+  if (cars.length) [[-2, -24, 0], [2, 28, Math.PI]].forEach(([x, z, ry]) => {
+    const c = tintBody(clone(pick(cars)), pick(CAR_COLORS)); fit(c, 1.5);
+    place(c, x, z, ry);                       // ry 0 => nose +Z, ry PI => nose -Z
+    scene.add(c);
+    traffic.push({ c, dir: ry === 0 ? 1 : -1, y: c.position.y });
   });
   motes(130, 48, 1, 13);
   camera.position.set(38, 22, 42);
@@ -260,7 +283,7 @@ async function buildClinic() {
   const b = (await loadMany("commercial", ["building-e", "building-a", "building-c"]))[0];
   let bb = null;
   if (b) {
-    fit(b, 11); b.position.set(0, 0, 0); scene.add(b);
+    fit(b, 11); place(b, 0, 0, 0); scene.add(b);
     bb = new THREE.Box3().setFromObject(b);
     windowGlow(b, 0, 40, 5);
     const inner = new THREE.PointLight(0xffcf8a, 12, 30, 2);
@@ -275,20 +298,33 @@ async function buildClinic() {
   sx.textAlign = "center"; sx.textBaseline = "middle";
   sx.shadowColor = "#ffd9a0"; sx.shadowBlur = 24; sx.fillText("Dream Dental", 256, 66);
   const stex = new THREE.CanvasTexture(sc); stex.colorSpace = THREE.SRGBColorSpace;
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(6.6, 1.6),
-    new THREE.MeshStandardMaterial({ map: stex, emissiveMap: stex, emissive: 0xffffff, emissiveIntensity: 1.4 }));
-  sign.position.set(0, bb ? bb.max.y * .74 : 7, (bb ? bb.max.z : 5) + .15);
-  scene.add(sign);
-  scene.add(glowAt(0xffc27a, 5, .2, sign.position.x, sign.position.y, sign.position.z + .3));
+  if (bb) {
+    const sz = new THREE.Vector3(); bb.getSize(sz);
+    const ctr = new THREE.Vector3(); bb.getCenter(ctr);
+    // probe the front face at sign height so we never float past a set-back storey
+    const signY = bb.min.y + sz.y * 0.46;
+    const ray = new THREE.Raycaster(new THREE.Vector3(ctr.x, signY, bb.max.z + 40), new THREE.Vector3(0, 0, -1));
+    const hit = ray.intersectObject(b, true)[0];
+    const frontZ = hit ? hit.point.z : bb.max.z;
+    const w = Math.min(7.2, sz.x * 0.42), h = w / 4.1;
+    const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, h),
+      new THREE.MeshStandardMaterial({ map: stex, emissiveMap: stex, emissive: 0xffffff, emissiveIntensity: 1.5 }));
+    sign.position.set(ctr.x, signY, frontZ + 0.06);
+    scene.add(sign);
+    scene.add(glowAt(0xffc27a, w * 0.85, .18, ctr.x, signY, frontZ + 0.4));
+  }
 
   const trees = await loadMany("nature", ["tree_default", "tree_oak", "tree_detailed", "tree_fat"]);
   if (trees.length) for (let i = 0; i < 12; i++) {
     const t = clone(pick(trees)); fit(t, rnd(3.8, 5.6));
-    t.position.set(rnd(-24, 24), 0, rnd(-20, -8)); t.rotation.y = Math.random() * 7; scene.add(t);
+    place(t, rnd(-24, 24), rnd(-20, -8), Math.random() * 7); scene.add(t);
   }
   const cars = await loadMany("vehicles", ["sedan", "suv", "van", "taxi"]);
-  if (cars.length) [-10.5, -7, 7, 10.5].forEach((x) => {
-    const c = clone(pick(cars)); fit(c, 1.5); c.position.set(x, 0, 15); c.rotation.y = Math.PI; scene.add(c);
+  if (cars.length) [-9.3, -6.2, -3.1, 3.1, 6.2, 9.3].forEach((x) => {
+    if (Math.random() < .25) return;
+    const c = tintBody(clone(pick(cars)), pick(CAR_COLORS)); fit(c, 1.5);
+    place(c, x, 15.2, Math.PI);      // nose -Z, facing the clinic
+    scene.add(c);
   });
   [[-15, 8], [15, 8]].forEach(([x, z]) => { const l = streetLamp(5.5); l.position.set(x, 0, z); scene.add(l); });
   motes(80, 28, 1, 11);
@@ -308,20 +344,47 @@ async function buildTruck() {
 
   const truck = (await loadMany("vehicles", ["truck-flat", "truck", "delivery"]))[0];
   if (truck) {
-    fit(truck, 2.6); truck.position.set(0, 0, 0); truck.rotation.y = -Math.PI / 2; scene.add(truck);
+    tintBody(truck, 0xff9c3d);          // Dream Towing amber
+    fit(truck, 2.6);
+    place(truck, 0, 0, -Math.PI / 2);          // nose toward -X (driving left)
+    scene.add(truck);
     const tb = new THREE.Box3().setFromObject(truck);
-    const beacon = new THREE.Mesh(new THREE.CapsuleGeometry(.1, .34, 4, 10), glowMat(0xffa32b, 3));
-    beacon.rotation.z = Math.PI / 2; beacon.position.set(.9, tb.max.y + .12, 0); scene.add(beacon);
-    scene.add(glowAt(0xffa32b, 2.6, .45, .9, tb.max.y + .15, 0));
-    const bl = new THREE.PointLight(0xffa02b, 6, 20, 2); bl.position.set(.9, tb.max.y + .4, 0); scene.add(bl);
-    [-.7, .7].forEach((z) => scene.add(glowAt(0xfff0cc, 1.5, .3, tb.min.x - .2, .8, z)));
+    const sz = new THREE.Vector3(); tb.getSize(sz);
+    const noseX = tb.min.x, tailX = tb.max.x;
+    const cabX = noseX + sz.x * 0.26;          // cab sits just behind the nose
+    // amber beacon on the cab roof
+    const beacon = new THREE.Mesh(new THREE.CapsuleGeometry(.11, .38, 4, 10), glowMat(0xffa32b, 3));
+    beacon.rotation.x = Math.PI / 2;           // lie across the cab (cab faces X)
+    beacon.position.set(cabX, tb.max.y + .13, 0); scene.add(beacon);
+    scene.add(glowAt(0xffa32b, 2.4, .45, cabX, tb.max.y + .16, 0));
+    const bl = new THREE.PointLight(0xffa02b, 7, 22, 2); bl.position.set(cabX, tb.max.y + .5, 0); scene.add(bl);
+    // headlights spill forward from the nose
+    [-.55, .55].forEach((z) => scene.add(glowAt(0xfff0cc, 1.7, .34, noseX - .25, tb.min.y + sz.y * .34, z)));
+    // tow boom + hook rising off the flatbed
+    const steel = new THREE.MeshStandardMaterial({ color: 0x2a2f3d, roughness: .5, metalness: .7 });
+    const boom = new THREE.Mesh(new THREE.BoxGeometry(2.9, .26, .3), steel);
+    boom.position.set(tailX - sz.x * .30, tb.min.y + sz.y * 1.05, 0);
+    boom.rotation.z = -0.42; boom.castShadow = true; scene.add(boom);
+    const post = new THREE.Mesh(new THREE.BoxGeometry(.28, 1.0, .34), steel);
+    post.position.set(tailX - sz.x * .17, tb.min.y + sz.y * .85, 0); post.castShadow = true; scene.add(post);
+    const hookEnd = new THREE.Vector3(tailX + sz.x * .06, tb.min.y + sz.y * .62, 0);
+    const cable = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .9, 6), steel);
+    cable.position.set(hookEnd.x, hookEnd.y + .45, 0); scene.add(cable);
+    const hook = new THREE.Mesh(new THREE.TorusGeometry(.17, .05, 8, 14, Math.PI * 1.5), steel);
+    hook.position.copy(hookEnd); hook.rotation.y = Math.PI / 2; scene.add(hook);
   }
   const towed = (await loadMany("vehicles", ["sedan"]))[0];
-  if (towed) { fit(towed, 1.5); towed.position.set(5.6, .1, 0); towed.rotation.y = -Math.PI / 2; scene.add(towed); }
+  if (towed) {
+    tintBody(towed, 0x9ec2ff);
+    fit(towed, 1.5);
+    place(towed, 6.4, 0, -Math.PI / 2);        // same heading as the truck
+    towed.rotation.z = 0.06;                   // nose lifted a touch, as if hooked
+    scene.add(towed);
+  }
 
   const trees = await loadMany("nature", ["tree_default", "tree_oak", "tree_fat", "tree_detailed"]);
   if (trees.length) for (let x = -60; x <= 60; x += 12) [12, -12].forEach((z) => {
-    const t = clone(pick(trees)); fit(t, rnd(3.8, 5.8)); t.position.set(x + rnd(-3, 3), 0, z); t.rotation.y = Math.random() * 7; scene.add(t);
+    const t = clone(pick(trees)); fit(t, rnd(3.8, 5.8)); place(t, x + rnd(-3, 3), z, Math.random() * 7); scene.add(t);
   });
   for (let x = -40; x <= 40; x += 26) { const l = streetLamp(5.5); l.position.set(x, 0, -11); scene.add(l); }
   motes(70, 26, .6, 8);
@@ -387,6 +450,7 @@ builder().then((meta) => {
       tr.c.position.z += tr.dir * 7 * dt;
       if (tr.c.position.z > 70) tr.c.position.z = -70;
       if (tr.c.position.z < -70) tr.c.position.z = 70;
+      tr.c.position.y = tr.y;
     });
     composer.render();
     requestAnimationFrame(loop);
