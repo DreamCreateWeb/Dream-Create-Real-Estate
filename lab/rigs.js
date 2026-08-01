@@ -290,7 +290,206 @@ async function towtruck({ loadGLB, debugBands }) {
   return g;
 }
 
-export const RIGS = { towtruck };
+/* =========================================================
+   RIG: parts — lay named kit pieces out in a row so we can
+   see what each one actually is.  ?rig=parts&parts=modular/building-window,...
+   ========================================================= */
+async function parts({ loadGLB, partList, debugBands }) {
+  const g = new THREE.Group();
+  const names = (partList || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const cols = Math.ceil(Math.sqrt(names.length));
+  const DBG = { 0: 0xff0000, 1: 0x00ff00, 2: 0x0000ff, 3: 0xff00ff, 4: 0x00ffff, 5: 0xffff00, 6: 0xffffff, 7: 0xff8800 };
+  for (let i = 0; i < names.length; i++) {
+    let o;
+    try { o = await loadGLB(names[i]); } catch (e) { continue; }
+    if (debugBands) { const kit = names[i].split("/")[0]; await paint(o, kit, DBG, "../assets/", true); }
+    const col = i % cols, row = Math.floor(i / cols);
+    o.position.set((col - (cols - 1) / 2) * 1.35, 0, (row - (cols - 1) / 2) * 1.35);
+    g.add(o);
+  }
+  return g;
+}
+
+
+/* =========================================================
+   RIG: DreamCRM dental clinic — modern two-storey
+   Built from the modular building kit on its 1x1 x 0.62 grid,
+   repainted into the DreamCRM palette pulled from
+   dreamcreatestudio.com.
+   ========================================================= */
+export const DREAMCRM = {
+  surface:  0xf4f7fd,   // near-white facade  (--color-surface-1 #f8faff)
+  ink:      0x1a2440,   // deep navy          (--color-ink-900)
+  inkSoft:  0x33405f,   // (--color-ink-700)
+  accent:   0x4c7df0,   // brand blue         (27x in the site CSS)
+  glassLit: 0x9dc0ff,
+};
+
+/* modular-kit palette strips, verified with ?bands=1:
+   0 = awnings · 3 = detail/AC · 5 = window glass · 6 = roof · 7 = wall */
+const MOD_BANDS = {
+  7: DREAMCRM.surface,
+  5: DREAMCRM.glassLit,
+  6: DREAMCRM.ink,
+  0: DREAMCRM.accent,
+  3: DREAMCRM.inkSoft,
+};
+
+function signTexture(title, sub) {
+  const w = 1024, h = 256, c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const x = c.getContext("2d");
+  x.fillStyle = "#10182e"; x.fillRect(0, 0, w, h);
+  x.fillStyle = "#4c7df0"; x.fillRect(0, h - 10, w, 10);
+  x.textAlign = "left"; x.textBaseline = "middle";
+  x.fillStyle = "#f4f7fd";
+  x.font = "600 96px 'Geist Sans', Inter, system-ui, sans-serif";
+  x.shadowColor = "#4c7df0"; x.shadowBlur = 26;
+  x.fillText(title, 56, h / 2 - 14);
+  x.shadowBlur = 0;
+  x.fillStyle = "#7ca5ff";
+  x.font = "500 38px 'Geist Mono', ui-monospace, monospace";
+  x.fillText(sub, 58, h / 2 + 62);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+async function clinic({ loadGLB, debugBands }) {
+  const g = new THREE.Group();
+  const CELL = 1.0, STOREY = 0.62;
+  const W = 6, D = 4;                       // footprint in cells
+  const DBG = { 0: 0xff0000, 1: 0x00ff00, 2: 0x0000ff, 3: 0xff00ff, 4: 0x00ffff, 5: 0xffff00, 6: 0xffffff, 7: 0xff8800 };
+  const bands = debugBands ? DBG : MOD_BANDS;
+
+  // preload the pieces we need, pre-painted
+  const NEED = {
+    win:    "modular/building-window",
+    winL:   "modular/building-window-large",
+    door:   "modular/building-door-window",
+    corner: "modular/building-corner-window",
+    block:  "modular/building-block",
+    rBord:  "modular/roof-flat-border-straight",
+    rCorn:  "modular/roof-flat-corner",
+    rCent:  "modular/roof-flat-center",
+    ac:     "modular/detail-ac-a",
+  };
+  const P = {};
+  for (const [k, path] of Object.entries(NEED)) {
+    try {
+      const o = await loadGLB(path);
+      await paint(o, "modular", bands, "../assets/", !!debugBands);
+      P[k] = o;
+    } catch (e) { /* piece missing — skip */ }
+  }
+  const use = (k) => (P[k] ? P[k].clone(true) : null);
+
+  const px = (ix) => (ix - (W - 1) / 2) * CELL;
+  const pz = (iz) => (iz - (D - 1) / 2) * CELL;
+
+  // ---- two storeys of perimeter wall ----
+  for (let s = 0; s < 2; s++) {
+    const y = s * STOREY;
+    for (let ix = 0; ix < W; ix++) {
+      for (let iz = 0; iz < D; iz++) {
+        const edgeX = ix === 0 || ix === W - 1;
+        const edgeZ = iz === 0 || iz === D - 1;
+        if (!edgeX && !edgeZ) continue;               // hollow interior
+        let key = "win", ry = 0;
+        if (iz === D - 1) ry = 0;                      // front faces +Z
+        else if (iz === 0) ry = Math.PI;               // back
+        else if (ix === W - 1) ry = Math.PI / 2;       // right
+        else ry = -Math.PI / 2;                        // left
+        if (edgeX && edgeZ) key = "corner";
+        else if (iz === D - 1) {
+          // glazed ground-floor frontage, big windows above
+          const mid = ix === 2 || ix === 3;
+          key = s === 0 ? (mid ? "door" : "winL") : "winL";
+        }
+        const o = use(key) || use("block");
+        if (!o) continue;
+        o.rotation.y = ry;
+        o.position.set(px(ix), y, pz(iz));
+        g.add(o);
+      }
+    }
+  }
+
+  // ---- flat roof: a solid deck + a slim parapet (kit roof tiles don't
+  //      tile on this grid, and left the interior open to the sky) ----
+  const roofY = 2 * STOREY;
+  const spanX = W * CELL, spanZ = D * CELL;
+  const deckMat = new THREE.MeshStandardMaterial({ color: DREAMCRM.inkSoft, roughness: 0.92 });
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(spanX, 0.06, spanZ), deckMat);
+  deck.castShadow = true; deck.receiveShadow = true;
+  deck.position.set(0, roofY + 0.03, 0);
+  g.add(deck);
+
+  const parapetMat = new THREE.MeshStandardMaterial({ color: DREAMCRM.surface, roughness: 0.85 });
+  const capMat = new THREE.MeshStandardMaterial({ color: DREAMCRM.accent, roughness: 0.5, metalness: 0.1 });
+  const PH = 0.15, PT = 0.09;
+  [[spanX, PT, 0, spanZ / 2 - PT / 2], [spanX, PT, 0, -spanZ / 2 + PT / 2]].forEach(([w, t, ox, oz]) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(w, PH, t), parapetMat);
+    p.castShadow = true; p.position.set(ox, roofY + PH / 2, oz); g.add(p);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(w, 0.022, t * 1.25), capMat);
+    cap.position.set(ox, roofY + PH, oz); g.add(cap);
+  });
+  [[PT, spanZ, spanX / 2 - PT / 2, 0], [PT, spanZ, -spanX / 2 + PT / 2, 0]].forEach(([t, d, ox, oz]) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(t, PH, d), parapetMat);
+    p.castShadow = true; p.position.set(ox, roofY + PH / 2, oz); g.add(p);
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(t * 1.25, 0.022, d), capMat);
+    cap.position.set(ox, roofY + PH, oz); g.add(cap);
+  });
+
+  // slim brand-blue band between the storeys (modern medical look)
+  [[spanZ / 2 + 0.005, 0], [-spanZ / 2 - 0.005, Math.PI]].forEach(([oz]) => {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(spanX, 0.045, 0.02), capMat);
+    band.position.set(0, STOREY - 0.015, oz); g.add(band);
+  });
+  [[spanX / 2 + 0.005], [-spanX / 2 - 0.005]].forEach(([ox]) => {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.045, spanZ), capMat);
+    band.position.set(ox, STOREY - 0.015, 0); g.add(band);
+  });
+
+  // ---- rooftop plant ----
+  [[1.2, -0.6], [-1.6, 0.4]].forEach(([ax, az]) => {
+    const o = use("ac");
+    if (!o) return;
+    o.position.set(ax, roofY + 0.06, az);
+    g.add(o);
+  });
+
+  // ---- entrance canopy in brand blue ----
+  const canopy = new THREE.Mesh(
+    new THREE.BoxGeometry(CELL * 2.6, 0.07, 0.9),
+    new THREE.MeshStandardMaterial({ color: DREAMCRM.accent, roughness: 0.45, metalness: 0.1 }));
+  canopy.castShadow = true;
+  canopy.position.set(0, STOREY * 0.78, pz(D - 1) + CELL / 2 + 0.42);
+  g.add(canopy);
+  [-1.1, 1.1].forEach((cx) => {
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, STOREY * 0.78, 10),
+      new THREE.MeshStandardMaterial({ color: DREAMCRM.inkSoft, roughness: 0.4, metalness: 0.6 }));
+    post.castShadow = true;
+    post.position.set(cx, STOREY * 0.39, pz(D - 1) + CELL / 2 + 0.8);
+    g.add(post);
+  });
+
+  // ---- lit signage ----
+  const tex = signTexture("Dream Dental", "powered by DreamCRM");
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65),
+    new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: 0xffffff, emissiveIntensity: 1.15, roughness: 0.6 }));
+  sign.position.set(0, STOREY * 1.62, pz(D - 1) + CELL / 2 + 0.02);
+  g.add(sign);
+
+  // soft wash of brand light on the frontage
+  const wash = new THREE.PointLight(DREAMCRM.accent, 2.2, 6, 2);
+  wash.position.set(0, STOREY * 1.2, pz(D - 1) + 1.2);
+  g.add(wash);
+
+  return g;
+}
+
+export const RIGS = { towtruck, parts, clinic };
 
 export async function buildRig(name, ctx) {
   const fn = RIGS[name];

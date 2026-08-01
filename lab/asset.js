@@ -32,7 +32,7 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = ENV === "dusk" ? 0.95 : 1.05;
+renderer.toneMappingExposure = parseFloat(Q.get("exp") || (ENV === "dusk" ? 0.9 : 0.8));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
@@ -56,7 +56,7 @@ scene.add(new THREE.Mesh(new THREE.SphereGeometry(160, 32, 20), new THREE.Shader
 })));
 
 /* ---- studio lighting rig: key / fill / rim ---- */
-const key = new THREE.DirectionalLight(ENV === "dusk" ? 0xffb478 : 0xfff2e2, ENV === "dusk" ? 2.6 : 2.9);
+const key = new THREE.DirectionalLight(ENV === "dusk" ? 0xffb478 : 0xfff4e8, ENV === "dusk" ? 2.4 : 1.9);
 key.position.set(6, 9, 7);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
@@ -66,8 +66,8 @@ key.shadow.camera.top = 12; key.shadow.camera.bottom = -12;
 key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03; key.shadow.radius = 3;
 scene.add(key);
 const fill = new THREE.DirectionalLight(0x9ab4ff, 0.7); fill.position.set(-7, 4, 5); scene.add(fill);
-const rim  = new THREE.DirectionalLight(0xffd9a0, 1.5); rim.position.set(-4, 5, -8); scene.add(rim);
-scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x14162a, 0.5));
+const rim  = new THREE.DirectionalLight(0xffd9a0, 1.0); rim.position.set(-4, 5, -8); scene.add(rim);
+scene.add(new THREE.HemisphereLight(0x9fb4ff, 0x14162a, 0.35));
 
 /* ---- ground ---- */
 const floor = new THREE.Mesh(new THREE.CircleGeometry(60, 64),
@@ -84,7 +84,7 @@ new RGBELoader().setPath(A + "hdri/").load("evening_road_01_puresky_1k.hdr", (t)
   t.mapping = THREE.EquirectangularReflectionMapping;
   const p = new THREE.PMREMGenerator(renderer);
   scene.environment = p.fromEquirectangular(t).texture;
-  scene.environmentIntensity = ENV === "dusk" ? 0.35 : 0.55;
+  scene.environmentIntensity = parseFloat(Q.get("envi") || (ENV === "dusk" ? 0.3 : 0.35));
   t.dispose(); p.dispose();
 }, undefined, () => {});
 
@@ -130,7 +130,7 @@ let target = new THREE.Vector3(0, 1, 0), dist = 8;
   try {
     let obj, label, extra = "";
     if (RIG) {
-      obj = await buildRig(RIG, { loadGLB, THREE, debugBands: Q.get('bands') === '1' });
+      obj = await buildRig(RIG, { loadGLB, THREE, debugBands: Q.get('bands') === '1', partList: Q.get('parts') });
       label = "rig: " + RIG;
       extra = `<span class="dim">rigs</span> ${Object.keys(RIGS).join(", ")}`;
     } else if (MODEL) {
@@ -172,7 +172,7 @@ let target = new THREE.Vector3(0, 1, 0), dist = 8;
 /* ---- bloom (subtle — this is an inspection view) ---- */
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.28, 0.6, 0.95));
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), parseFloat(Q.get("bloom") || "0.16"), 0.6, 1.0));
 composer.addPass(new OutputPass());
 composer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
 addEventListener("resize", () => {

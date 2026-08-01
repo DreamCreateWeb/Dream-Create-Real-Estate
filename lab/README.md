@@ -50,6 +50,13 @@ which, flood them all with `?bands=1` and look:
 Bespoke assets built by kitbashing CC0 base models with custom geometry
 and proper materials (steel / chrome / rubber / glass / glow).
 
+- `clinic` — **DreamCRM dental clinic**: a modern two-storey medical
+  building assembled on the modular kit's 1×1 × 0.62 grid, repainted into
+  the DreamCRM palette, with a solid roof deck + parapet, an inter-storey
+  brand band, a glazed frontage, entrance canopy, rooftop plant and lit
+  signage.
+- `parts` — lay arbitrary kit pieces out in a row to see what they are
+  (`?rig=parts&parts=modular/building-window,...`).
 - `towtruck` — **Dream Towing wrecker**: Kenney flatbed base tinted amber,
   plus a modelled wrecker assembly (tower, lattice boom, hydraulic ram,
   winch drum, cable, hook block, stabilisers, light bar, exhaust stack,
@@ -70,3 +77,25 @@ by the studio above; kept for scene composition later.
 
 Commercial use, no attribution required. Provenance files live beside the
 assets (`assets/models/LICENSE-ASSETS.txt`, `assets/textures/LICENSE-TEXTURES.txt`).
+
+
+## DreamCRM brand (pulled from dreamcreatestudio.com CSS)
+
+| Token | Value |
+|-------|-------|
+| accent (brand blue) | `#4c7df0` |
+| ink-900 / deep navy | `#1a2440` |
+| ink-700 | `#33405f` |
+| canvas dark | `#10182e` |
+| surface light | `#f8faff` |
+| hairline | `#e0e9f8` |
+
+Type: **Geist Sans** / **Geist Mono**. These drive the clinic's materials
+and signage so the 3D world matches the real product.
+
+## Kit palette maps (verified with `?bands=1`)
+
+| Kit | Strips |
+|-----|--------|
+| vehicles | 0 glass · 1 lights · 3 cladding · 5 hubs · 6 body paint |
+| modular  | 0 awnings · 3 detail/AC · 5 window glass · 6 roof · 7 wall |
