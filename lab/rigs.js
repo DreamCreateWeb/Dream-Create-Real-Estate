@@ -31,14 +31,88 @@ function cyl(rt, rb, h, mat, seg = 16) {
 }
 function at(o, x, y, z) { o.position.set(x, y, z); return o; }
 
-/* recolor only body-ish meshes of a kit model */
-export function tintBody(obj, color) {
+/* ---------------------------------------------------------
+   Repaint a kit atlas.
+   Kenney vehicles use one shared colormap; the paintable body
+   panels are the near-white, low-saturation texels. We remap
+   ONLY those to the target colour (keeping their shading), so
+   glass, tyres, lights and trim keep their own colours.
+   --------------------------------------------------------- */
+const _atlasCache = new Map();
+const BAND = 64;                       // Kenney palette strips are 64px wide
+
+/* Repaint whole palette STRIPS (they are vertical gradients, so we scale
+   each texel by its own luminance to keep the shading). `bands` maps a
+   strip index -> target colour (or "debug" to flood it flat).            */
+function repaintAtlas(url, bands, debug = false) {
+  const key = url + "|" + JSON.stringify(bands) + "|" + debug;
+  if (_atlasCache.has(key)) return _atlasCache.get(key);
+  const p = new Promise((res, rej) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = img.width; c.height = img.height;
+      const cx = c.getContext("2d", { willReadFrequently: true });
+      cx.drawImage(img, 0, 0);
+      const id = cx.getImageData(0, 0, c.width, c.height), d = id.data;
+      // per-strip peak luminance, so we can normalise the gradient
+      const peak = {};
+      for (const b of Object.keys(bands)) peak[b] = 1e-6;
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const b = Math.floor(x / BAND);
+          if (!(b in bands)) continue;
+          const i = (y * c.width + x) * 4;
+          const l = Math.max(d[i], d[i + 1], d[i + 2]) / 255;
+          if (l > peak[b]) peak[b] = l;
+        }
+      }
+      for (let y = 0; y < c.height; y++) {
+        for (let x = 0; x < c.width; x++) {
+          const b = Math.floor(x / BAND);
+          if (!(b in bands)) continue;
+          const i = (y * c.width + x) * 4;
+          if (d[i + 3] === 0) continue;
+          const t = new THREE.Color(bands[b]);
+          if (debug) { d[i] = t.r * 255; d[i + 1] = t.g * 255; d[i + 2] = t.b * 255; continue; }
+          const l = Math.max(d[i], d[i + 1], d[i + 2]) / 255;
+          const k = 0.42 + 0.72 * (l / peak[b]);        // keep the strip's shading
+          d[i]     = Math.min(255, t.r * 255 * k);
+          d[i + 1] = Math.min(255, t.g * 255 * k);
+          d[i + 2] = Math.min(255, t.b * 255 * k);
+        }
+      }
+      cx.putImageData(id, 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.needsUpdate = true;
+      res(tex);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+  _atlasCache.set(key, p);
+  return p;
+}
+
+/* Kenney car-kit palette strips actually used by vehicle bodies
+   (measured from truck-flat UVs).                                */
+/* verified by flooding each strip and rendering (lab/asset.html?rig=..&bands=1):
+   0 = window glass · 1 = lights · 3 = lower cladding/bumpers ·
+   5 = wheel hubs · 6 = main body paint                                   */
+export const VEHICLE_BANDS = { GLASS: 0, LIGHTS: 1, CLADDING: 3, HUBS: 5, PAINT: 6 };
+
+/* Paint a kit model by swapping its atlas for a repainted one. */
+export async function paint(obj, kit, bands, base = "../assets/", debug = false) {
+  const tex = await repaintAtlas(`${base}models/${kit}/Textures/colormap.png`, bands, debug);
   obj.traverse((o) => {
-    if (!o.isMesh || !/body|cabin|chassis/i.test(o.name)) return;
+    if (!o.isMesh || !o.material || !o.material.map) return;
     o.material = o.material.clone();
-    o.material.color = new THREE.Color(color);
-    o.material.roughness = 0.4;
-    o.material.metalness = 0.22;
+    o.material.map = tex;
+    o.material.color = new THREE.Color(0xffffff);   // let the texture carry the colour
+    o.material.roughness = 0.62;
+    o.material.metalness = 0.06;
+    o.material.needsUpdate = true;
   });
   return obj;
 }
@@ -49,47 +123,58 @@ export function tintBody(obj, color) {
    wrecker assembly: boom, hydraulic ram, winch drum, cable,
    hook block, stabilisers, light bar, stack & mirrors.
    ========================================================= */
-async function towtruck({ loadGLB }) {
+async function towtruck({ loadGLB, debugBands }) {
   const AMBER = 0xff9c3d;
+  const DEBUG_BANDS = !!debugBands;
   const g = new THREE.Group();
 
   const base = await loadGLB("vehicles/truck-flat");
-  tintBody(base, AMBER);
+  const BANDS = DEBUG_BANDS
+    ? { 0: 0xff0000, 1: 0x00ff00, 2: 0x0000ff, 3: 0xff00ff, 4: 0x00ffff, 5: 0xffff00, 6: 0xffffff, 7: 0xff8800 }
+    : { 6: AMBER, 0: 0x16283f, 3: 0x4a4f5e };   // paint · glass · cladding
+  await paint(base, "vehicles", BANDS, "../assets/", DEBUG_BANDS);
   g.add(base);
 
   // measure the base so every added part is proportional & seated
   const bb = new THREE.Box3().setFromObject(base);
   const sz = new THREE.Vector3(); bb.getSize(sz);
   const noseZ = bb.max.z, tailZ = bb.min.z;      // model nose is +Z
-  const bedY = bb.min.y + sz.y * 0.46;            // top of the flat bed
   const halfW = sz.x / 2;
+  // measured from truck-flat: bed floor y=0.45, interior x ±0.65, z -1.32..-0.63
+  const bedY     = bb.min.y + sz.y * 0.517;
+  const bedHalfX = sz.x * 0.385;
+  const bedZ0    = tailZ + sz.z * 0.02;           // tail end of the bed
+  const bedZ1    = tailZ + sz.z * 0.27;           // front end of the bed
+  const bedMidZ  = (bedZ0 + bedZ1) / 2;
+  const bedLen   = bedZ1 - bedZ0;
 
   const steel = M.steel(), dark = M.darkSteel(), chrome = M.chrome();
 
   /* --- deck plate over the flatbed --- */
-  const deck = rbox(sz.x * 0.92, 0.05, sz.z * 0.46, steel);
-  at(deck, 0, bedY + 0.03, tailZ + sz.z * 0.27);
+  const deck = rbox(bedHalfX * 1.86, 0.04, bedLen * 0.94, steel);
+  at(deck, 0, bedY + 0.022, bedMidZ);
   g.add(deck);
-  // deck ribs
-  for (let i = -3; i <= 3; i++) {
-    const rib = rbox(sz.x * 0.88, 0.02, 0.03, dark);
-    at(rib, 0, bedY + 0.062, tailZ + sz.z * 0.27 + i * (sz.z * 0.055));
+  // deck ribs, kept inside the bed walls
+  const ribN = 6;
+  for (let i = 0; i < ribN; i++) {
+    const rib = rbox(bedHalfX * 1.7, 0.018, 0.028, dark);
+    at(rib, 0, bedY + 0.05, bedZ0 + bedLen * ((i + 0.5) / ribN));
     g.add(rib);
   }
 
   /* --- tower the boom pivots from --- */
   const towerH = sz.y * 0.62;
-  const towerZ = tailZ + sz.z * 0.44;
+  const towerZ = bedZ1 + sz.z * 0.03;
   [-1, 1].forEach((s) => {
     const leg = rbox(0.06, towerH, 0.09, dark);
-    at(leg, s * halfW * 0.42, bedY + towerH / 2, towerZ);
+    at(leg, s * bedHalfX * 0.62, bedY + towerH / 2, towerZ);
     g.add(leg);
   });
-  const towerTop = rbox(halfW * 0.95, 0.07, 0.12, dark);
+  const towerTop = rbox(bedHalfX * 1.5, 0.07, 0.12, dark);
   at(towerTop, 0, bedY + towerH, towerZ);
   g.add(towerTop);
   // winch drum between the legs
-  const drum = cyl(0.09, 0.09, halfW * 0.7, chrome, 14);
+  const drum = cyl(0.085, 0.085, bedHalfX * 1.1, chrome, 14);
   drum.rotation.z = Math.PI / 2;
   at(drum, 0, bedY + towerH * 0.55, towerZ - 0.02);
   g.add(drum);
@@ -131,7 +216,7 @@ async function towtruck({ loadGLB }) {
 
   /* --- cable + hook block hanging from the boom tip --- */
   const tip = new THREE.Vector3(0, 0, -boomLen).applyEuler(boom.rotation).add(boom.position);
-  const drop = tip.y - (bb.min.y + sz.y * 0.30);
+  const drop = sz.y * 0.42;
   const cable = cyl(0.018, 0.018, drop, chrome, 6);
   at(cable, tip.x, tip.y - drop / 2, tip.z);
   g.add(cable);
@@ -145,13 +230,19 @@ async function towtruck({ loadGLB }) {
   g.add(hook);
 
   /* --- stabiliser legs at the tail --- */
+  const groundY = bb.min.y;                        // wheels touch here
   [-1, 1].forEach((s) => {
-    const arm = rbox(0.07, 0.07, 0.22, dark);
-    at(arm, s * halfW * 0.78, bb.min.y + sz.y * 0.24, tailZ + 0.1);
-    g.add(arm);
-    const pad = cyl(0.07, 0.09, 0.05, steel, 10);
-    at(pad, s * halfW * 0.78, bb.min.y + sz.y * 0.10, tailZ + 0.1);
-    g.add(pad);
+    const x = s * bedHalfX * 1.06;
+    const hip = rbox(0.16, 0.09, 0.09, dark);      // bracket off the chassis
+    at(hip, x * 0.86, bedY - sz.y * 0.10, bedZ0 + 0.06);
+    g.add(hip);
+    const legTop = bedY - sz.y * 0.10, legLen = legTop - (groundY + 0.05);
+    const leg = rbox(0.07, legLen, 0.07, steel);
+    at(leg, x, legTop - legLen / 2, bedZ0 + 0.06);
+    g.add(leg);
+    const foot = cyl(0.085, 0.085, 0.045, M.darkSteel(), 12);
+    at(foot, x, groundY + 0.045, bedZ0 + 0.06);
+    g.add(foot);
   });
 
   /* --- cab details: light bar, stack, mirrors --- */

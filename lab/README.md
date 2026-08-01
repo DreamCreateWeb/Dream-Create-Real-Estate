@@ -16,6 +16,35 @@ lab/asset.html?rig=towtruck              # a built rig from rigs.js
         &grid=0                          # hide the ground grid
 ```
 
+## Contact sheets — `lab/sheet.js`
+
+Renders an asset from 8 angles (front / both sides / back / 3-4 / close /
+rear 3-4 / top) and composites one labelled sheet. This is the difference
+between *guessing* and *seeing* — clipping, floating parts and material
+errors are obvious on a sheet and invisible in a single hero shot.
+
+```bash
+node lab/sheet.js "rig=towtruck" towtruck            # → .preview/towtruck-sheet.png
+node lab/sheet.js "rig=towtruck" tt-wire "wire=1"    # wireframe overlay
+node lab/sheet.js "m=vehicles/sedan" sedan
+```
+
+Studio flags that make this work: `&a=` azimuth, `&el=` elevation,
+`&zoom=`, `&wire=1` wireframe, `&xray=1` transparent, `&hud=0`, `&grid=0`.
+
+## Repainting kit atlases
+
+Kenney kits share one **palette atlas of vertical gradient strips** (64px
+wide) — *not* flat colour patches. Tinting `material.color` therefore
+repaints windows, tyres and lights along with the body.
+
+`paint(obj, kit, bands)` repaints whole strips instead, scaling each texel
+by its own luminance so the shading survives. To discover which strip is
+which, flood them all with `?bands=1` and look:
+
+    0 = window glass   1 = lights   3 = lower cladding
+    5 = wheel hubs     6 = main body paint
+
 ## Rigs — `lab/rigs.js`
 
 Bespoke assets built by kitbashing CC0 base models with custom geometry

@@ -25,6 +25,7 @@ const ENV = Q.get("env") || "studio";
 const SHOW_GRID = Q.get("grid") !== "0";
 const A = "../assets/";
 const hud = document.getElementById("hud");
+if (Q.get("hud") === "0") hud.style.display = "none";
 
 const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("c"), antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.7));
@@ -129,7 +130,7 @@ let target = new THREE.Vector3(0, 1, 0), dist = 8;
   try {
     let obj, label, extra = "";
     if (RIG) {
-      obj = await buildRig(RIG, { loadGLB, THREE });
+      obj = await buildRig(RIG, { loadGLB, THREE, debugBands: Q.get('bands') === '1' });
       label = "rig: " + RIG;
       extra = `<span class="dim">rigs</span> ${Object.keys(RIGS).join(", ")}`;
     } else if (MODEL) {
@@ -142,6 +143,22 @@ let target = new THREE.Vector3(0, 1, 0), dist = 8;
     }
     obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
     scene.add(obj);
+    if (Q.get("wire") === "1") {
+      const adds = [];
+      obj.traverse((o) => {
+        if (!o.isMesh) return;
+        const w = new THREE.LineSegments(
+          new THREE.WireframeGeometry(o.geometry),
+          new THREE.LineBasicMaterial({ color: 0x7dffea, transparent: true, opacity: 0.55, depthTest: true }));
+        w.applyMatrix4(o.matrixWorld);
+        adds.push(w);
+      });
+      obj.updateMatrixWorld(true);
+      adds.forEach((w) => scene.add(w));
+    }
+    if (Q.get("xray") === "1") {
+      obj.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.42; o.material.depthWrite = false; } });
+    }
     const f = frame(obj);
     target = f.ctr; dist = f.dist;
     report(obj, label, extra);
@@ -163,17 +180,20 @@ addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
 });
 
-/* ---- turntable (freeze with ?a=<deg> for stable screenshots) ---- */
+/* ---- camera controls: ?a=<deg> azimuth, ?el=<deg> elevation, ?zoom=<mult> ---- */
 const FIXED = Q.get("a");
+const EL = Q.get("el") !== null ? parseFloat(Q.get("el")) * Math.PI / 180 : 0.30;
+const ZOOM = parseFloat(Q.get("zoom") || "1");
 const clock = new THREE.Clock();
 (function loop() {
   const t = clock.getElapsedTime();
   const ang = FIXED !== null ? (parseFloat(FIXED) * Math.PI / 180) : (0.6 + t * 0.18);
-  const el = 0.30;
+  const el = EL;
+  const d = dist / ZOOM;
   camera.position.set(
-    target.x + Math.cos(ang) * dist * Math.cos(el),
-    target.y + dist * Math.sin(el) * 0.9,
-    target.z + Math.sin(ang) * dist * Math.cos(el),
+    target.x + Math.cos(ang) * d * Math.cos(el),
+    target.y + d * Math.sin(el) * 0.9,
+    target.z + Math.sin(ang) * d * Math.cos(el),
   );
   camera.lookAt(target);
   composer.render();
