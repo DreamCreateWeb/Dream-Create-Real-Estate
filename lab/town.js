@@ -77,7 +77,7 @@ key.shadow.camera.left = -26; key.shadow.camera.right = 26;
 key.shadow.camera.top = 26; key.shadow.camera.bottom = -26;
 key.shadow.bias = -0.0006; key.shadow.normalBias = 0.025;
 scene.add(key);
-scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x14182c, 0.34));
+scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x161a30, 0.38));
 
 /* ---------------- sky ---------------- */
 scene.add(new THREE.Mesh(new THREE.SphereGeometry(380, 32, 20), new THREE.ShaderMaterial({
@@ -346,7 +346,7 @@ const HOUSE_SCHEMES = [
           const src = await load(`houses/building-type-${TYPES[ti]}`);
           await paint(src, "houses",
             { 0: s.roof, 1: s.door, 3: s.wall, 5: lit ? 0xffc27a : 0x2b3c56, 7: s.trim }, A);
-          if (lit) src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x4a3416); } });
+          if (lit) src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x6a4a20); } });
           const inst = instancer(src, 90);
           if (!inst) { pair.push(null); continue; }
           inst.geometry.computeBoundingBox();
@@ -453,6 +453,9 @@ const HOUSE_SCHEMES = [
     claim(x, z);   // road tiles are never buildable
   }
 
+  /* every lit frontage also drops a warm mote here — from the air these
+     are what make the town twinkle; up close they melt into the windows */
+  const practicals = [];
   let houses = 0, hi = 0;
   function lot(sx, sz, dx, dz, along) {
     // sx,sz street tile; dx,dz unit normal pointing away from the street
@@ -493,7 +496,10 @@ const HOUSE_SCHEMES = [
     if (!push(evening ? houseLit[idx] : houseInst[idx], wx, 0, wz, ry, scale)) return false;
     houses++;
     // lit windows spill onto the front garden
-    if (evening) poolAt(wx - dx * (0.62 * scale + 0.2), wz - dz * (0.62 * scale + 0.2), ry, 1.9, 1.2);
+    if (evening) {
+      poolAt(wx - dx * (0.62 * scale + 0.2), wz - dz * (0.62 * scale + 0.2), ry, 1.9, 1.2);
+      practicals.push(wx - dx * 0.68 * scale, 0.34, wz - dz * 0.68 * scale);
+    }
 
     // driveway from the kerb to the house, offset to one side of the frontage
     const side = rnd() < 0.5 ? -1 : 1;
@@ -565,6 +571,7 @@ const HOUSE_SCHEMES = [
       if (push(s, gx(cx), 0, gz(cz), ry)) {
         shops++;
         poolAt(gx(SPINE + side * 0.62), gz(cz), ry, 0.9, hw * 2.2);
+        practicals.push(gx(cx - side * hd * 0.9), 0.3, gz(cz));
       }
       for (let t = Math.floor(z); t <= Math.ceil(z + hw * 2); t++) { claim(SPINE + side, t); claim(SPINE + side * 2, t); }
       z += hw * 2 + 0.02;
@@ -751,6 +758,19 @@ const HOUSE_SCHEMES = [
     m.receiveShadow = false; m.renderOrder = -2;
     scene.add(m);
     hud.dataset.fields = fields;
+  }
+
+  /* the practicals layer: one additive Points cloud for every lit frontage */
+  if (practicals.length) {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(practicals, 3));
+    /* constant screen-size: from the air these hold as ~4px sparks instead of
+       shrinking to nothing; up close they tuck inside the lit windows */
+    const m = new THREE.PointsMaterial({ map: glowTex, color: 0xffcf8e, size: 6,
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, sizeAttenuation: false });
+    m.color.multiplyScalar(2.0);
+    const pts = new THREE.Points(g, m); pts.frustumCulled = false;
+    scene.add(pts);
   }
 
   /* ---- ground mist: a soft breath over the fields and the pond ---- */
