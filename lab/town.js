@@ -77,7 +77,7 @@ key.shadow.camera.left = -26; key.shadow.camera.right = 26;
 key.shadow.camera.top = 26; key.shadow.camera.bottom = -26;
 key.shadow.bias = -0.0006; key.shadow.normalBias = 0.025;
 scene.add(key);
-scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x161a30, 0.38));
+scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x161a30, 0.33));
 
 /* ---------------- sky ---------------- */
 scene.add(new THREE.Mesh(new THREE.SphereGeometry(380, 32, 20), new THREE.ShaderMaterial({
@@ -367,6 +367,8 @@ const HOUSE_SCHEMES = [
     ["tree_detailed",   0x2a4f3a, 0x4d3c2d],
     ["tree_pineRoundA", 0x22422f, 0x3d3025],
     ["tree_cone",       0x1f3d2d, 0x3a2e24],
+    ["tree_oak_dark",   0x30584e, 0x443930],   // dusk-teal — the dream accent
+    ["tree_detailed_dark", 0x483845, 0x42322a], // dusty plum, rare and quiet
   ];
   const trees = [];
   for (const [name, leaf, bark] of GREEN) {
@@ -395,10 +397,14 @@ const HOUSE_SCHEMES = [
       }));
     } catch (e) {}
   }
-  /* nothing gets planted on the tarmac — canopies may overhang, trunks may not */
+  /* nothing gets planted on the tarmac — canopies may overhang, trunks may not.
+     Each planting also gets a brightness jitter via instance colour, which is
+     what stops a street of identical models reading as copy-paste. */
+  const _C = new THREE.Color();
   const plant = (grp, x, z, s, ry) => {
     if (!grp || roadGap(x, z) < 0.06) return false;
-    grp.forEach((i) => push(i, x, 0, z, ry, s));
+    _C.setScalar(0.72 + rnd() * 0.28);
+    grp.forEach((i) => { if (push(i, x, 0, z, ry, s)) i.setColorAt(i.count - 1, _C); });
     return true;
   };
 
@@ -558,6 +564,14 @@ const HOUSE_SCHEMES = [
       scene.add(inst); shopInst.push(inst);
     } catch (e) {}
   }
+  let awn = null;
+  try {
+    const aw = await load("commercial/detail-awning-wide");
+    await paint(aw, "commercial", { 0: 0x74463e }, A);   // canvas + frame, one worn red
+    awn = instancer(aw, 40);
+    if (awn) scene.add(awn);
+  } catch (e) {}
+
   const DOWNTOWN = { z0: 12, z1: 17 };
   let shops = 0;
   if (shopInst.length) for (const side of [-1, 1]) {
@@ -572,6 +586,13 @@ const HOUSE_SCHEMES = [
         shops++;
         poolAt(gx(SPINE + side * 0.62), gz(cz), ry, 0.9, hw * 2.2);
         practicals.push(gx(cx - side * hd * 0.9), 0.3, gz(cz));
+        /* awnings hang on the facade plane; the model protrudes streetward
+           (z 0.10..0.25 measured), one per ~0.9 u of frontage */
+        const nAwn = Math.max(1, Math.round(hw * 2 / 0.95));
+        for (let k = 0; k < nAwn; k++) {
+          const oz = (k - (nAwn - 1) / 2) * (hw * 2 / nAwn);
+          push(awn, gx(cx - side * hd), 0.24, gz(cz) + oz, ry, 0.85);
+        }
       }
       for (let t = Math.floor(z); t <= Math.ceil(z + hw * 2); t++) { claim(SPINE + side, t); claim(SPINE + side * 2, t); }
       z += hw * 2 + 0.02;
@@ -846,9 +867,10 @@ const HOUSE_SCHEMES = [
     }
   }
 
-  [...Object.values(roadInst), ...houseInst, ...houseLit, ...shopInst, ...trees.flat(),
+  [...Object.values(roadInst), ...houseInst, ...houseLit, ...shopInst, awn, ...trees.flat(),
    ...bushes.flat(), ...tufts.flat(), lampInst, glowInst, driveInst, poolInst]
-    .forEach((i) => { if (i) i.instanceMatrix.needsUpdate = true; });
+    .forEach((i) => { if (i) { i.instanceMatrix.needsUpdate = true;
+      if (i.instanceColor) i.instanceColor.needsUpdate = true; } });
 
   /* ---- far field: silhouette ridges dissolving into the haze ---- */
   const ridgeMat = new THREE.MeshBasicMaterial({ color: 0x1f2946, fog: true });
