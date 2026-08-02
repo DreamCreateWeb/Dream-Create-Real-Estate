@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dream Create — town</title>
+  <link rel="icon" href="data:," />
+  <style>
+    html,body{margin:0;height:100%;background:#0b1024;overflow:hidden;
+      font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:#dfe3f5}
+    canvas{display:block}
+    .hud{position:fixed;left:16px;top:14px;z-index:10;font-size:12px;line-height:1.65;
+      background:rgba(10,12,26,.55);backdrop-filter:blur(8px);padding:10px 14px;border-radius:10px;
+      border:1px solid rgba(255,255,255,.1);max-width:360px}
+    .hud b{color:#ffc98a}
+    .hud .dim{color:#8f96b8}
+  </style>
+  <script type="importmap">
+  { "imports": { "three": "../assets/vendor/three.module.js", "three/addons/": "../assets/vendor/jsm/" } }
+  </script>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud" id="hud">building town…</div>
+  <script type="module" src="town.js"></script>
+</body>
+</html>

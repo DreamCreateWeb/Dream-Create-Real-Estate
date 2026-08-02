@@ -117,6 +117,14 @@ export async function paint(obj, kit, bands, base = "../assets/", debug = false)
   return obj;
 }
 
+/* The road kit shares the same 64px strip layout, measured from
+   the tile + lamp UVs:
+     0 = kerb shoulder (and the lamp head's warm cell)
+     1 = tarmac · 2 = footpath · 7 = white ramp: lane markings,
+     kerb tops and the lamp pole all live in this one gradient,
+   which is why an exact-colour swap only caught part of it.     */
+export const ROAD_BANDS = { SHOULDER: 0, TARMAC: 1, PAVEMENT: 2, WHITE: 7 };
+
 /* =========================================================
    RIG: Dream Towing wrecker
    Kenney flatbed truck as the base, with a properly modelled
