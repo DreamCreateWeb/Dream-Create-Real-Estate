@@ -55,6 +55,13 @@ and proper materials (steel / chrome / rubber / glass / glow).
   the DreamCRM palette, with a solid roof deck + parapet, an inter-storey
   brand band, a glazed frontage, entrance canopy, rooftop plant and lit
   signage.
+- `houses` — the suburban house types repainted into varied lived-in
+  schemes (cream / sage / dusty blue / terracotta / warm grey / blush /
+  olive) with slate roofs and a mix of dark and warm-lit windows.
+  `makeHouse(loadGLB, type, scheme, lit)` builds one for the world.
+- `trees` — the nature kit recoloured to curated greens with proper bark.
+  `makeTree(loadGLB, i, autumn)` gives a species with colour drift so a
+  street of them never looks copy-pasted.
 - `parts` — lay arbitrary kit pieces out in a row to see what they are
   (`?rig=parts&parts=modular/building-window,...`).
 - `towtruck` — **Dream Towing wrecker**: Kenney flatbed base tinted amber,
@@ -99,3 +106,8 @@ and signage so the 3D world matches the real product.
 |-----|--------|
 | vehicles | 0 glass · 1 lights · 3 cladding · 5 hubs · 6 body paint |
 | modular  | 0 awnings · 3 detail/AC · 5 window glass · 6 roof · 7 wall |
+| houses   | 0 roof · 1 door/accent · 3 wall · 5 window glass · 7 trim |
+
+Nature-kit models carry plain material colours instead of an atlas
+(`leafsGreen` / `leafsDark` / `woodBark` / `woodBarkDark` / `grass`), so
+they are recoloured with `tintByMaterial()` rather than strip repainting.

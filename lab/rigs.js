@@ -685,7 +685,116 @@ async function clinic({ loadGLB, debugBands }) {
   return g;
 }
 
-export const RIGS = { towtruck, parts, clinic };
+
+/* =========================================================
+   Suburban houses + nature
+   Palette strips verified with ?bands=1:
+     0 = roof · 1 = door/accent · 3 = wall · 5 = window glass · 7 = trim
+   ========================================================= */
+export const HOUSE_BANDS = { ROOF: 0, DOOR: 1, WALL: 3, GLASS: 5, TRIM: 7 };
+
+/* warm, lived-in schemes that sit well under a dusk sky */
+const HOUSE_SCHEMES = [
+  { wall: 0xe7dccb, roof: 0x39404f, trim: 0xf6f2ea, door: 0x3f6353 },  // cream / slate
+  { wall: 0xd3dcd5, roof: 0x333d47, trim: 0xf1f5f2, door: 0x8d5a45 },  // sage
+  { wall: 0xccd6e4, roof: 0x2e3a49, trim: 0xeff3f9, door: 0x2f4f74 },  // dusty blue
+  { wall: 0xe6cfc2, roof: 0x4a3b3a, trim: 0xf7efe9, door: 0x6b4130 },  // soft terracotta
+  { wall: 0xdcd8d2, roof: 0x3c4148, trim: 0xf5f4f1, door: 0x54606e },  // warm grey
+  { wall: 0xefdcd8, roof: 0x453741, trim: 0xfaf1ef, door: 0x7d4552 },  // blush
+  { wall: 0xd9e0d2, roof: 0x35402f, trim: 0xf2f6ee, door: 0x4d5f3a },  // olive
+];
+const GLASS_DARK = 0x2a3c58, GLASS_LIT = 0xffc98a;
+
+/* trees carry plain material colours (no atlas) — recolour by material name */
+export function tintByMaterial(obj, map) {
+  obj.traverse((o) => {
+    if (!o.isMesh || !o.material) return;
+    const key = Object.keys(map).find((k) => (o.material.name || "").toLowerCase().includes(k.toLowerCase()));
+    if (!key) return;
+    o.material = o.material.clone();
+    o.material.color = new THREE.Color(map[key]);
+    o.material.roughness = 0.95;
+  });
+  return obj;
+}
+
+const FOLIAGE = [0x2f5d43, 0x386b4b, 0x2a5340, 0x436b45, 0x53743f, 0x8a6a35, 0x9a5f34];
+const BARK    = [0x5b4636, 0x4c3a2d, 0x63503c];
+
+/* one house, painted with a scheme; some windows lit */
+export async function makeHouse(loadGLB, type, scheme, lit, base = "../assets/") {
+  const o = await loadGLB(`houses/building-type-${type}`);
+  await paint(o, "houses", {
+    0: scheme.roof, 1: scheme.door, 3: scheme.wall,
+    5: lit ? GLASS_LIT : GLASS_DARK, 7: scheme.trim,
+  }, base);
+  return o;
+}
+
+async function houses({ loadGLB, debugBands }) {
+  const g = new THREE.Group();
+  const types = ["a", "b", "c", "e", "g", "h", "j", "l", "n", "q"];
+  const cols = 5, gap = 2.7;
+  for (let i = 0; i < types.length; i++) {
+    const scheme = HOUSE_SCHEMES[i % HOUSE_SCHEMES.length];
+    let o;
+    try {
+      o = debugBands
+        ? await (async () => { const m = await loadGLB(`houses/building-type-${types[i]}`);
+            await paint(m, "houses", { 0:0xff0000,1:0x00ff00,3:0xff00ff,5:0xffff00,7:0xff8800 }, "../assets/", true); return m; })()
+        : await makeHouse(loadGLB, types[i], scheme, i % 3 === 0);
+    } catch (e) { continue; }
+    const col = i % cols, row = Math.floor(i / cols);
+    o.position.set((col - (cols - 1) / 2) * gap, 0, (row - 0.5) * gap * 1.05);
+    o.rotation.y = Math.PI;                       // face the camera
+    g.add(o);
+  }
+  return g;
+}
+
+async function trees({ loadGLB }) {
+  const g = new THREE.Group();
+  /* explicit, curated colours — material names in this kit are
+     leafsGreen / leafsDark / woodBark / woodBarkDark / grass          */
+  const SET = [
+    ["tree_default",     0x35664a, 0x584434],
+    ["tree_oak",         0x2d5a41, 0x5b4636],
+    ["tree_fat",         0x3d6e4a, 0x4f3d2f],
+    ["tree_detailed",    0x2f5f45, 0x59452f],
+    ["tree_cone",        0x28513c, 0x4c3a2d],
+    ["tree_pineDefaultA",0x24483a, 0x463629],
+    ["tree_blocks",      0x436b45, 0x5b4636],
+    ["plant_bushLarge",  0x35604a, 0x4c3a2d],
+    ["plant_bush",       0x3a6a4e, 0x4c3a2d],
+    ["grass_large",      0x4a7248, 0x4c3a2d],
+  ];
+  const cols = 5, gap = 1.5;
+  for (let i = 0; i < SET.length; i++) {
+    const [name, leaf, bark] = SET[i];
+    let o;
+    try { o = await loadGLB(`nature/${name}`); } catch (e) { continue; }
+    tintByMaterial(o, { leafs: leaf, grass: leaf, wood: bark, bark: bark });
+    const col = i % cols, row = Math.floor(i / cols);
+    o.position.set((col - (cols - 1) / 2) * gap, 0, (row - 0.5) * gap);
+    g.add(o);
+  }
+  return g;
+}
+
+/* a tree for the world: pick a species and give it slight colour drift
+   so a street of them never looks copy-pasted                          */
+const TREE_SPECIES = ["tree_default", "tree_oak", "tree_fat", "tree_detailed", "tree_cone", "tree_pineDefaultA"];
+export async function makeTree(loadGLB, i = 0, autumn = false) {
+  const name = TREE_SPECIES[i % TREE_SPECIES.length];
+  const o = await loadGLB(`nature/${name}`);
+  const greens = [0x35664a, 0x2d5a41, 0x3d6e4a, 0x2f5f45, 0x28513c, 0x24483a];
+  const autumns = [0x8a6a35, 0x9a5f34, 0x7d5a2c];
+  const leaf = autumn ? autumns[i % autumns.length] : greens[i % greens.length];
+  tintByMaterial(o, { leafs: leaf, grass: leaf, wood: 0x53412f, bark: 0x53412f });
+  return o;
+}
+
+export const RIGS = { towtruck, parts, clinic, houses, trees };
 
 export async function buildRig(name, ctx) {
   const fn = RIGS[name];
