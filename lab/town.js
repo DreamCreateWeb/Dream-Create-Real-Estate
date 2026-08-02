@@ -24,6 +24,7 @@ import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { paint, tintByMaterial } from "./rigs.js";
 
 const Q = new URLSearchParams(location.search);
@@ -76,7 +77,7 @@ key.shadow.camera.left = -26; key.shadow.camera.right = 26;
 key.shadow.camera.top = 26; key.shadow.camera.bottom = -26;
 key.shadow.bias = -0.0006; key.shadow.normalBias = 0.025;
 scene.add(key);
-scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x14182c, 0.3));
+scene.add(new THREE.HemisphereLight(0x7fb0e0, 0x14182c, 0.34));
 
 /* ---------------- sky ---------------- */
 scene.add(new THREE.Mesh(new THREE.SphereGeometry(380, 32, 20), new THREE.ShaderMaterial({
@@ -414,7 +415,7 @@ const HOUSE_SCHEMES = [
      strongest "someone lives here" signal at dusk, one instanced draw call */
   const poolGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
   const poolMat = new THREE.MeshBasicMaterial({ map: glowTex, transparent: true,
-    blending: THREE.AdditiveBlending, depthWrite: false, color: 0x8a4d1e, opacity: 0.5 });
+    blending: THREE.AdditiveBlending, depthWrite: false, color: 0x9a5522, opacity: 0.62 });
   const poolInst = new THREE.InstancedMesh(poolGeo, poolMat, 260);
   poolInst.count = 0; poolInst.frustumCulled = false; poolInst.renderOrder = 1;
   scene.add(poolInst);
@@ -492,7 +493,7 @@ const HOUSE_SCHEMES = [
     if (!push(evening ? houseLit[idx] : houseInst[idx], wx, 0, wz, ry, scale)) return false;
     houses++;
     // lit windows spill onto the front garden
-    if (evening) poolAt(wx - dx * (0.62 * scale + 0.2), wz - dz * (0.62 * scale + 0.2), ry, 1.5, 1.0);
+    if (evening) poolAt(wx - dx * (0.62 * scale + 0.2), wz - dz * (0.62 * scale + 0.2), ry, 1.9, 1.2);
 
     // driveway from the kerb to the house, offset to one side of the frontage
     const side = rnd() < 0.5 ? -1 : 1;
@@ -594,7 +595,7 @@ const HOUSE_SCHEMES = [
   const pondC = { x: gx(22.5), z: gz(21.5) };
   {
     const pond = new THREE.Mesh(new THREE.CircleGeometry(1.45, 40),
-      new THREE.MeshStandardMaterial({ color: 0x223c5c, roughness: 0.05, metalness: 0.75, envMapIntensity: 1.5 }));
+      new THREE.MeshStandardMaterial({ color: 0x1a2f4c, roughness: 0.06, metalness: 0.7, envMapIntensity: 1.05 }));
     pond.rotation.x = -Math.PI / 2; pond.position.set(pondC.x, 0.004, pondC.z);
     scene.add(pond);
     for (let a = 0; a < Math.PI * 2; a += 0.32) {
@@ -757,13 +758,13 @@ const HOUSE_SCHEMES = [
     const drop2 = (x, z, w, h, o) => {
       const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x3d5480,
         transparent: true, opacity: o, depthWrite: false }));
-      sp.scale.set(w, h, 1); sp.position.set(x, h * 0.22, z);
+      sp.scale.set(w, h, 1); sp.position.set(x, h * 0.14, z);
       sp.userData.x0 = x; scene.add(sp); FX.mist.push(sp);
     };
     for (let i = 0; i < 9; i++) {
       const a = (i / 9) * Math.PI * 2;
       const r = EDGE + 4 + rnd() * 9;
-      drop2(Math.cos(a) * r, Math.sin(a) * r, range(9, 16), range(1.6, 2.6), 0.13 + rnd() * 0.06);
+      drop2(Math.cos(a) * r, Math.sin(a) * r, range(9, 16), range(1.2, 1.9), 0.1 + rnd() * 0.05);
     }
     drop2(pondC.x, pondC.z + 0.4, 4.2, 1.1, 0.15);
   }
@@ -772,7 +773,7 @@ const HOUSE_SCHEMES = [
   {
     const N = 90, base = new Float32Array(N * 3), ph = new Float32Array(N);
     let n = 0;
-    const drop = (x, z) => { if (n >= N) return;
+    const drop = (x, z) => { if (n >= N || roadGap(x, z) < 0.5) return;
       base[n * 3] = x; base[n * 3 + 1] = 0.22 + rnd() * 0.5; base[n * 3 + 2] = z; ph[n] = rnd() * 7; n++; };
     for (let i = 0; i < 42; i++) drop(pondC.x + (rnd() - 0.5) * 3.6, pondC.z + (rnd() - 0.5) * 4.4);
     for (let i = 0; i < 48; i++) {
@@ -1007,6 +1008,21 @@ const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.34, 0.85, 0.82));
 composer.addPass(new OutputPass());
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: `varying vec2 vUv;
+    void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.); }`,
+  fragmentShader: `varying vec2 vUv; uniform sampler2D tDiffuse;
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      vec3 g = c.rgb;
+      g = mix(vec3(dot(g, vec3(0.299, 0.587, 0.114))), g, 1.12);
+      g += (vec3(0.05, 0.08, 0.14) - g) * (1.0 - smoothstep(vec3(0.0), vec3(0.32), g)) * 0.4;
+      float d = distance(vUv, vec2(0.5));
+      g *= 1.0 - smoothstep(0.46, 0.9, d) * 0.32;
+      gl_FragColor = vec4(g, c.a);
+    }`,
+}));
 composer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
