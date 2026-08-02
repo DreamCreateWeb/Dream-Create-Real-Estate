@@ -35,6 +35,7 @@ globalThis.__paintDebug = Q.has("pdbg");
 
 /* ---------------- world constants ---------------- */
 export const TILE = 1;
+const ROAD_TOP = 0.021;                // the kit tiles stand this proud of the ground
 const GRID = 34;
 const SETBACK = 1.7;                   // house centre distance from a street centreline
 const CAR_SCALE = 0.22;
@@ -59,13 +60,15 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.03, 500);
 
 /* dusk atmosphere — haze closes the horizon so the town needs no edges */
-const HAZE = new THREE.Color(0x2b3a63);
-scene.fog = new THREE.FogExp2(HAZE, 0.021);
+/* matched to the sky a few degrees above the horizon away from the sunset —
+   a lighter haze made the far fields glow brighter than the lit town */
+const HAZE = new THREE.Color(0x1b2547);
+scene.fog = new THREE.FogExp2(HAZE, 0.0245);
 
 /* ---------------- light ---------------- */
 /* low warm sun raking across the streets, cool sky bounce filling the shade */
 const key = new THREE.DirectionalLight(0xffc79a, 1.25);
-key.position.set(-26, 17, 20);
+key.position.set(-30, 11, 22);
 key.castShadow = true;
 key.shadow.mapSize.set(2048, 2048);
 key.shadow.camera.near = 1; key.shadow.camera.far = 110;
@@ -107,6 +110,30 @@ const ground = new THREE.Mesh(
     color: 0x4f6146, roughness: 1 }));
 ground.rotation.x = -Math.PI / 2; ground.position.y = -0.006; ground.receiveShadow = true;
 scene.add(ground);
+
+/* one flat green reads as a billiard table from the air. A second plane with
+   large soft blotches gives the land some grain without another texture. */
+const mottle = (() => {
+  const c = document.createElement("canvas"); c.width = c.height = 256;
+  const cx = c.getContext("2d");
+  cx.clearRect(0, 0, 256, 256);
+  let seed = 7;
+  const r = () => ((seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296);
+  for (let i = 0; i < 90; i++) {
+    const x = r() * 256, y = r() * 256, rad = 14 + r() * 46;
+    const g = cx.createRadialGradient(x, y, 0, x, y, rad);
+    const a = 0.1 + r() * 0.16;
+    g.addColorStop(0, `rgba(0,0,0,${a})`); g.addColorStop(1, "rgba(0,0,0,0)");
+    cx.fillStyle = g; cx.beginPath(); cx.arc(x, y, rad, 0, 7); cx.fill();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(7, 7);
+  return t;
+})();
+const mottlePlane = new THREE.Mesh(ground.geometry, new THREE.MeshBasicMaterial({
+  color: 0x22331f, alphaMap: mottle, transparent: true, opacity: 0.34, depthWrite: false }));
+mottlePlane.rotation.x = -Math.PI / 2; mottlePlane.position.y = -0.0016; mottlePlane.renderOrder = -1;
+scene.add(mottlePlane);
 
 /* ---------------- road network ----------------
    the spine runs north–south at x=15. Cross streets every 6 rows,
@@ -177,9 +204,11 @@ const HOUSE_SCHEMES = [
   const t0 = performance.now();
 
   /* ---- roads ---- */
-  /* strips 0/1/2/7 — 7 is the white ramp the markings and kerbs share,
-     so fresh-paint white becomes worn grey and stops shouting from the air */
-  const ROAD_MAP = { 0: 0x272c3b, 1: 0x373d50, 2: 0x4f545f, 7: 0x8b919b };
+  /* Measured off the tile geometry, not guessed from the palette: strip 2 is
+     the thin centre line (a strip at z=0 spanning the tile), strip 7 is the
+     footpath and kerbs. I had those two the wrong way round, which painted
+     the centre line dark and left the footpaths glaring. */
+  const ROAD_MAP = { 0: 0x242936, 1: 0x363c4c, 2: 0x9aa08e, 7: 0x565c67 };
   const asphaltN = tex("asphalt_norm.jpg", 1), asphaltR = tex("asphalt_rough.jpg", 1);
   const tiles = {};
   for (const n of ["road-straight", "road-bend", "road-intersection", "road-crossroad", "road-end"]) {
@@ -226,27 +255,32 @@ const HOUSE_SCHEMES = [
     push(roadInst[k] || roadInst["road-straight"], gx(x), 0, gz(z), ry);
   }
 
-  /* ---- houses: instanced per (type × scheme) ---- */
+  /* ---- houses: instanced per (type × scheme), lit and unlit twins ----
+     Lit-ness used to be a property of the instancer, so every copy of a
+     type came on at once and whole streets switched together. Two twins
+     per combination lets each house decide for itself.                 */
   const TYPES = ["a", "b", "c", "e", "g", "h", "j", "l", "n", "q"];
-  const houseInst = [];
+  const houseInst = [], houseLit = [];
   for (let ti = 0; ti < TYPES.length; ti++) {
     for (let si = 0; si < HOUSE_SCHEMES.length; si++) {
       if ((ti * 3 + si) % 4 !== 0) continue;             // a spread of combinations, not all 70
       const s = HOUSE_SCHEMES[si];
-      try {
-        const src = await load(`houses/building-type-${TYPES[ti]}`);
-        const lit = (ti + si) % 3 === 0;
-        await paint(src, "houses",
-          { 0: s.roof, 1: s.door, 3: s.wall, 5: lit ? 0xffc27a : 0x2b3c56, 7: s.trim }, A);
-        if (lit) src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x3a2a12); } });
-        const inst = instancer(src, 130);
-        if (inst) {
+      const pair = [];
+      for (const lit of [false, true]) {
+        try {
+          const src = await load(`houses/building-type-${TYPES[ti]}`);
+          await paint(src, "houses",
+            { 0: s.roof, 1: s.door, 3: s.wall, 5: lit ? 0xffc27a : 0x2b3c56, 7: s.trim }, A);
+          if (lit) src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x3a2a12); } });
+          const inst = instancer(src, 90);
+          if (!inst) { pair.push(null); continue; }
           inst.geometry.computeBoundingBox();
           const bb = inst.geometry.boundingBox;
           inst.userData.half = [Math.max(-bb.min.x, bb.max.x), Math.max(-bb.min.z, bb.max.z)];
-          houseInst.push(inst); scene.add(inst);
-        }
-      } catch (e) {}
+          scene.add(inst); pair.push(inst);
+        } catch (e) { pair.push(null); }
+      }
+      if (pair[0]) { houseInst.push(pair[0]); houseLit.push(pair[1] || pair[0]); }
     }
   }
 
@@ -266,20 +300,21 @@ const HOUSE_SCHEMES = [
       tintByMaterial(src, { leafs: leaf, grass: leaf, wood: bark, bark });
       const parts = []; src.traverse((n) => { if (n.isMesh) parts.push(n); });
       trees.push(parts.map((p) => {
-        const i = new THREE.InstancedMesh(p.geometry, p.material, 460);
+        const i = new THREE.InstancedMesh(p.geometry, p.material, 900);
         i.castShadow = true; i.receiveShadow = true; i.count = 0; i.frustumCulled = false;
         scene.add(i); return i;
       }));
     } catch (e) {}
   }
-  const bushes = [];
-  for (const [name, c] of [["plant_bush", 0x5c8a5f], ["plant_bushLarge", 0x639166], ["grass_large", 0x6c9862]]) {
+  const bushes = [], tufts = [];
+  for (const [name, c, into] of [["plant_bush", 0x3d6b45, 0], ["plant_bushLarge", 0x436f48, 0],
+                                 ["grass_large", 0x4e7a4a, 1]]) {
     try {
       const src = await load(`nature/${name}`);
       tintByMaterial(src, { leafs: c, grass: c, wood: 0x40342a, bark: 0x40342a });
       const parts = []; src.traverse((n) => { if (n.isMesh) parts.push(n); });
-      bushes.push(parts.map((p) => {
-        const i = new THREE.InstancedMesh(p.geometry, p.material, 320);
+      (into ? tufts : bushes).push(parts.map((p) => {
+        const i = new THREE.InstancedMesh(p.geometry, p.material, into ? 260 : 1100);
         i.castShadow = false; i.receiveShadow = true; i.count = 0; i.frustumCulled = false;
         scene.add(i); return i;
       }));
@@ -358,13 +393,14 @@ const HOUSE_SCHEMES = [
       return true;
     };
     // a tight corner lot gets a narrower house rather than no house at all
-    let inst = null;
+    let idx = -1;
     for (let k = 0; k < houseInst.length; k++) {
-      const cand = houseInst[(hi + k) % houseInst.length];
-      if (fits(cand)) { inst = cand; hi += k + 1; break; }
+      const j = (hi + k) % houseInst.length;
+      if (fits(houseInst[j])) { idx = j; hi += k + 1; break; }
     }
-    if (!inst) return false;
-    if (!push(inst, wx, 0, wz, ry, scale)) return false;
+    if (idx < 0) return false;
+    const evening = rnd() < 0.45;                        // this house, not this type
+    if (!push(evening ? houseLit[idx] : houseInst[idx], wx, 0, wz, ry, scale)) return false;
     houses++;
 
     // driveway from the kerb to the house, offset to one side of the frontage
@@ -383,12 +419,66 @@ const HOUSE_SCHEMES = [
     if (bushes.length) for (let b = 0; b < 2; b++) if (rnd() < 0.6) {
       plant(pick(bushes), gx(cx) + range(-0.45, 0.45) - dx * 0.78, gz(cz) + range(-0.45, 0.45) - dz * 0.78, range(0.5, 0.9), rnd() * 7);
     }
-    // a big tree in the back garden
-    if (trees.length && rnd() < 0.55) {
+    // a hedge down one side boundary
+    if (bushes.length && rnd() < 0.6) {
+      const hs = rnd() < 0.5 ? -1 : 1, grp = pick(bushes);
+      for (let k = 0; k < 8; k++) {
+        const d = 1.0 + k * 0.28;
+        plant(grp, gx(sx + dx * d) + along.x * hs * 1.0, gz(sz + dz * d) + along.z * hs * 1.0,
+              range(0.5, 0.62), rnd() * 7);
+      }
+    }
+    // the back garden: a canopy tree and some low planting
+    if (trees.length && rnd() < 0.7) {
       plant(pick(trees), gx(sx + dx * 2.9) + range(-0.45, 0.45), gz(sz + dz * 2.9) + range(-0.45, 0.45), range(0.55, 0.9), rnd() * 7);
+    }
+    if (bushes.length) for (let b = 0; b < 2; b++) if (rnd() < 0.5) {
+      plant(pick(bushes), gx(sx + dx * range(2.2, 3.3)) + range(-0.6, 0.6), gz(sz + dz * range(2.2, 3.3)) + range(-0.6, 0.6), range(0.5, 0.8), rnd() * 7);
     }
     return true;
   }
+
+  /* ---- downtown -------------------------------------------------
+     A block of the route where the houses stop and shopfronts meet
+     the pavement. Without it the whole drive is one texture, and a
+     four-minute scroll through identical bungalows is a long time.
+     Terraced: each unit is placed against the last, not on a grid. */
+  const shopInst = [];
+  const SHOP_WALLS = [0x6f5f57, 0x5c6470, 0x74655a, 0x5a5f56, 0x6b5a5e];
+  for (let i = 0; i < 5; i++) {
+    const name = ["building-a", "building-c", "building-e", "building-h", "building-k"][i];
+    try {
+      const src = await load(`commercial/${name}`);
+      // strip 1 carries both the dark trim and the warm shop lights — leave it
+      await paint(src, "commercial", { 0: SHOP_WALLS[i], 3: 0xcfc7ba, 5: 0xffca86 }, A);
+      src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x2e2314); } });
+      const inst = instancer(src, 24);
+      if (!inst) continue;
+      inst.geometry.computeBoundingBox();
+      const bb = inst.geometry.boundingBox;
+      inst.userData.half = [Math.max(-bb.min.x, bb.max.x), Math.max(-bb.min.z, bb.max.z)];
+      scene.add(inst); shopInst.push(inst);
+    } catch (e) {}
+  }
+  const DOWNTOWN = { z0: 12, z1: 17 };
+  let shops = 0;
+  if (shopInst.length) for (const side of [-1, 1]) {
+    let z = DOWNTOWN.z0;
+    while (z < DOWNTOWN.z1) {
+      const s = pick(shopInst), [hw, hd] = s.userData.half;
+      const cx = SPINE + side * (0.74 + hd);             // ~2 m of footpath in front
+      if (z + hw * 2 > DOWNTOWN.z1) break;
+      const cz = z + hw;
+      const ry = side < 0 ? Math.PI / 2 : -Math.PI / 2;  // front (+Z) faces the street
+      if (push(s, gx(cx), 0, gz(cz), ry)) shops++;
+      for (let t = Math.floor(z); t <= Math.ceil(z + hw * 2); t++) { claim(SPINE + side, t); claim(SPINE + side * 2, t); }
+      z += hw * 2 + 0.02;
+    }
+  }
+
+  /* ---- the park: one block left green, so the air view has a lung -- */
+  const PARK = { x0: 21, x1: 24, z0: 19, z1: 24 };
+  for (let x = PARK.x0; x <= PARK.x1; x++) for (let z = PARK.z0; z <= PARK.z1; z++) claim(x, z);
 
   for (let z = 1; z < GRID - 1; z++) for (let x = 1; x < GRID - 1; x++) {
     if (!road[z][x]) continue;
@@ -398,6 +488,18 @@ const HOUSE_SCHEMES = [
     if (step % 2) continue;                              // a lot every two tiles
     if (vertical) { lot(x, z, -1, 0, along); lot(x, z, 1, 0, along); }
     else { lot(x, z, 0, -1, along); lot(x, z, 0, 1, along); }
+  }
+
+  /* park planting: big canopies round a clear middle, so it reads as
+     managed parkland rather than the leftover scrub between blocks */
+  for (let x = PARK.x0; x <= PARK.x1; x++) for (let z = PARK.z0; z <= PARK.z1; z++) {
+    const edge = x === PARK.x0 || x === PARK.x1 || z === PARK.z0 || z === PARK.z1;
+    const n = edge ? 2 : (rnd() < 0.35 ? 1 : 0);
+    for (let k = 0; k < n; k++) {
+      plant(pick(trees), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.65, 1.05), rnd() * 7);
+    }
+    if (bushes.length && rnd() < 0.5) plant(pick(bushes), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.6, 0.95), rnd() * 7);
+    if (tufts.length && rnd() < 0.35) plant(pick(tufts), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.6, 1.0), rnd() * 7);
   }
 
   /* ---- placement audit ------------------------------------------
@@ -454,7 +556,75 @@ const HOUSE_SCHEMES = [
       plant(pick(trees), gx(x) + range(-0.4, 0.4), gz(z) + range(-0.4, 0.4), range(0.5, 0.95), rnd() * 7);
       if (rnd() < 0.4) plant(pick(trees), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.4, 0.7), rnd() * 7);
     }
-    if (bushes.length && rnd() < 0.3) plant(pick(bushes), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.5, 1.0), rnd() * 7);
+    if (bushes.length && rnd() < 0.35) plant(pick(bushes), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.5, 0.85), rnd() * 7);
+    if (tufts.length && rnd() < 0.25) plant(pick(tufts), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.5, 0.9), rnd() * 7);
+  }
+
+  /* ---- the outskirts ---------------------------------------------
+     The grid ends at a hard edge, which from the air looks like the
+     world runs out. Beyond it: farmland laid out as one merged mesh
+     with per-vertex colour (one draw call for the lot), hedgerows of
+     shrubs along the field boundaries, and woodland thickening into
+     the haze. Nothing here is ever seen up close.                   */
+  const EDGE = (GRID * TILE) / 2;
+  const FAR = EDGE + 34;
+  {
+    /* dusk farmland: pasture, stubble, ploughed earth, rape. The town's grass
+       carries a texture map that darkens it, so untextured fields need to be
+       mixed well down to belong to the same evening. */
+    const FIELDS = [0x6c7a4e, 0x7a7c55, 0x8b8362, 0x5d6c46, 0x847e5c, 0x71794e, 0x536242, 0x808759];
+    const verts = [], cols = [], uvs = [];
+    const quad = (x0, z0, x1, z1, c) => {
+      const col = new THREE.Color(c);
+      // wound anticlockwise seen from above, or the normals point at the ground
+      const p = [[x0, z0], [x1, z1], [x1, z0], [x0, z0], [x0, z1], [x1, z1]];
+      for (const [px, pz] of p) {
+        verts.push(px, -0.0028, pz); cols.push(col.r, col.g, col.b);
+        uvs.push(px * 0.6, pz * 0.6);          // shared grass map, so fields sit in the same tonal range
+      }
+    };
+    let fields = 0;
+    for (let x = -FAR; x < FAR; ) {
+      const w = range(4, 9);
+      for (let z = -FAR; z < FAR; ) {
+        const d = range(4, 9);
+        // skip anything that touches the built grid
+        const outside = x + w < -EDGE - 1 || x > EDGE + 1 || z + d < -EDGE - 1 || z > EDGE + 1;
+        if (outside) {
+          const near = THREE.MathUtils.clamp((Math.max(Math.abs(x), Math.abs(z)) - EDGE) / 12, 0, 1);
+          const c = new THREE.Color(pick(FIELDS)).lerp(new THREE.Color(0x3c4a33), 1 - near);
+          quad(x + 0.12, z + 0.12, x + w - 0.12, z + d - 0.12, c.getHex());
+          fields++;
+          // hedgerow along two sides, thinning with distance from town
+          const far = Math.max(Math.abs(x), Math.abs(z));
+          const density = THREE.MathUtils.clamp(1.15 - far / FAR, 0.15, 0.9);
+          if (bushes.length) {
+            for (let t = 0; t < w; t += 0.6) if (rnd() < density) plant(pick(bushes), x + t, z + 0.1, range(0.6, 0.95), rnd() * 7);
+            for (let t = 0; t < d; t += 0.6) if (rnd() < density) plant(pick(bushes), x + 0.1, z + t, range(0.6, 0.95), rnd() * 7);
+          }
+          // a copse in the corner of some fields
+          if (trees.length && rnd() < 0.35) {
+            const cx2 = x + range(1, w - 1), cz2 = z + range(1, d - 1);
+            for (let k = 0; k < 3 + Math.floor(rnd() * 5); k++) {
+              plant(pick(trees), cx2 + range(-1.2, 1.2), cz2 + range(-1.2, 1.2), range(0.7, 1.2), rnd() * 7);
+            }
+          }
+        }
+        z += d;
+      }
+      x += w;
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
+    g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
+    g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    g.computeVertexNormals();          // no normals = no lighting = invisible
+    const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
+      vertexColors: true, map: tex("grass_color.jpg", 1), normalMap: tex("grass_norm.jpg", 1),
+      roughness: 1, metalness: 0 }));
+    m.receiveShadow = false; m.renderOrder = -2;
+    scene.add(m);
+    hud.dataset.fields = fields;
   }
 
   /* ---- street lamps: real kit models, lights only near the route ---- */
@@ -466,8 +636,8 @@ const HOUSE_SCHEMES = [
     lampInst = instancer(l, 260);
     if (lampInst) scene.add(lampInst);
   } catch (e) {}
-  const glowGeo = new THREE.SphereGeometry(0.035, 8, 6);
-  const glowMat = new THREE.MeshBasicMaterial({ color: 0xf6b877, fog: true });
+  const glowGeo = new THREE.SphereGeometry(0.05, 8, 6);
+  const glowMat = new THREE.MeshBasicMaterial({ color: 0xffc98d, fog: true });
   const glowInst = new THREE.InstancedMesh(glowGeo, glowMat, 260);
   glowInst.count = 0; glowInst.frustumCulled = false; scene.add(glowInst);
 
@@ -492,7 +662,8 @@ const HOUSE_SCHEMES = [
     }
   }
 
-  [...Object.values(roadInst), ...houseInst, ...trees.flat(), ...bushes.flat(), lampInst, glowInst, driveInst]
+  [...Object.values(roadInst), ...houseInst, ...houseLit, ...shopInst, ...trees.flat(),
+   ...bushes.flat(), ...tufts.flat(), lampInst, glowInst, driveInst]
     .forEach((i) => { if (i) i.instanceMatrix.needsUpdate = true; });
 
   /* ---- far field: silhouette ridges dissolving into the haze ---- */
@@ -511,25 +682,55 @@ const HOUSE_SCHEMES = [
     scene.add(m);
   }
 
+  /* ---- contact shadows -------------------------------------------
+     A shadow map at town scale can't resolve the gap under a car, so
+     every vehicle reads as if it's hovering. A soft blob laid on the
+     tarmac fixes the grounding for one draw call.                    */
+  const blobTex = (() => {
+    const c = document.createElement("canvas"); c.width = c.height = 128;
+    const cx = c.getContext("2d");
+    const g = cx.createRadialGradient(64, 64, 0, 64, 64, 62);
+    g.addColorStop(0, "rgba(0,0,0,0.72)");
+    g.addColorStop(0.45, "rgba(0,0,0,0.42)");
+    g.addColorStop(1, "rgba(0,0,0,0)");
+    cx.fillStyle = g; cx.fillRect(0, 0, 128, 128);
+    return new THREE.CanvasTexture(c);
+  })();
+  const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true,
+    depthWrite: false, opacity: 0.85, color: 0x0a0d16 });
+  const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+  const blobInst = new THREE.InstancedMesh(blobGeo, blobMat, 90);
+  blobInst.count = 0; blobInst.frustumCulled = false; blobInst.renderOrder = 2;
+  scene.add(blobInst);
+  const blobAt = (x, z, ry, w, d) => {
+    if (blobInst.count >= blobInst.instanceMatrix.count) return;
+    QT.setFromAxisAngle(AX, ry);
+    M4.compose(V3.set(x, ROAD_TOP + 0.005, z), QT, S3.set(w, 1, d));
+    blobInst.setMatrixAt(blobInst.count++, M4);
+  };
+
   /* ---- the car ---- */
-  let car = null;
+  let car = null, carBlob = null;
   try {
     car = await load("vehicles/sedan");
     await paint(car, "vehicles", { 6: 0xb9c2d0, 0: 0x131f31, 1: 0xffe3b0, 3: 0x3a3f4c }, A);
     car.scale.setScalar(CAR_SCALE);
     scene.add(car);
+    carBlob = new THREE.Mesh(blobGeo, blobMat.clone());
+    carBlob.scale.set(0.62, 1, 0.92); carBlob.renderOrder = 2;
+    scene.add(carBlob);
   } catch (e) {}
 
   /* parked cars give the street life for almost nothing */
-  const PARK = [["suv", 0x6c7b8c], ["hatchback-sports", 0x8f5a54], ["van", 0xc9c2b4], ["taxi", 0xd8a44e]];
-  for (const [name, col] of PARK) {
+  const PARKED = [["suv", 0x6c7b8c], ["hatchback-sports", 0x8f5a54], ["van", 0xc9c2b4], ["taxi", 0xd8a44e]];
+  for (const [name, col] of PARKED) {
     try {
       const src = await load(`vehicles/${name}`);
       await paint(src, "vehicles", { 6: col, 0: 0x131f31, 1: 0xffe3b0, 3: 0x3a3f4c }, A);
       src.scale.setScalar(CAR_SCALE);
       src.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(src);
-      const lift = -b.min.y;
+      const lift = -b.min.y, bw = (b.max.x - b.min.x) * 1.25, bd = (b.max.z - b.min.z) * 1.1;
       const parts = []; src.traverse((n) => { if (n.isMesh) parts.push(n); });
       const grp = parts.map((p) => {
         const i = new THREE.InstancedMesh(p.geometry, p.material, 60);
@@ -543,11 +744,13 @@ const HOUSE_SCHEMES = [
         const ry = vertical ? (side > 0 ? Math.PI : 0) : (side > 0 ? -Math.PI / 2 : Math.PI / 2);
         const px = gx(x) + (vertical ? side * 0.36 : range(-0.28, 0.28));
         const pz = gz(z) + (vertical ? range(-0.28, 0.28) : side * 0.36);
-        grp.forEach((i) => push(i, px, lift, pz, ry, CAR_SCALE));
+        grp.forEach((i) => push(i, px, lift + ROAD_TOP, pz, ry, CAR_SCALE));
+        blobAt(px, pz, ry, bw, bd);
       }
       grp.forEach((i) => { i.instanceMatrix.needsUpdate = true; });
     } catch (e) {}
   }
+  blobInst.instanceMatrix.needsUpdate = true;
 
   /* ---- the route: down the spine ---- */
   const route = new THREE.CatmullRomCurve3([
@@ -570,8 +773,9 @@ const HOUSE_SCHEMES = [
   const treeCount = trees.reduce((a, g) => a + (g[0] ? g[0].count : 0), 0);
   hud.innerHTML =
     `<b>town</b>  ${GRID}×${GRID} tiles · 1 tile ≈ 8 m<br>` +
-    `<span class="dim">houses</span> ${houses} &nbsp; <span class="dim">trees</span> ${treeCount} &nbsp; <span class="dim">lamps</span> ${lamps}<br>` +
+    `<span class="dim">houses</span> ${houses} &nbsp; <span class="dim">shops</span> ${shops} &nbsp; <span class="dim">trees</span> ${treeCount} &nbsp; <span class="dim">lamps</span> ${lamps}<br>` +
     `<span class="dim">draw calls</span> ${draws} &nbsp; <span class="dim">tris</span> ${(tris / 1000).toFixed(0)}k` +
+    ` &nbsp; <span class="dim">fields</span> ${hud.dataset.fields || 0}` +
     ` &nbsp; <span class="dim">built in</span> ${((performance.now() - t0) / 1000).toFixed(1)}s<br>` +
     `<span class="dim">cam</span> ${CAM}`;
 
@@ -590,10 +794,12 @@ const HOUSE_SCHEMES = [
     camera.position.set(gx(SPINE) + 0.2, 0.24, gz(22.4));
     look.set(gx(SPINE) - 0.05, 0.3, gz(11));
   } else {
+    /* chase cam: behind the car and just off its shoulder — 0.75 u out put
+       the lens inside the shopfronts once downtown existed */
     const t = THREE.MathUtils.clamp(T, 0, 1);
     const p = route.getPointAt(t), tg = route.getTangentAt(t);
-    camera.position.set(p.x + 0.75, 0.3, p.z - 1.5);
-    look.copy(p).addScaledVector(tg, 2.5); look.y = 0.2;
+    camera.position.set(p.x + 0.24, 0.34, p.z - 1.35);
+    look.copy(p).addScaledVector(tg, 3.0); look.y = 0.22;
   }
   camera.lookAt(look);
 
@@ -602,7 +808,24 @@ const HOUSE_SCHEMES = [
     car.position.set(p.x + 0.22, 0, p.z);
     car.rotation.y = Math.PI;
     const b = new THREE.Box3().setFromObject(car);
-    car.position.y = -b.min.y;
+    car.position.y = -b.min.y + ROAD_TOP;
+    if (carBlob) { carBlob.position.set(car.position.x, ROAD_TOP + 0.005, car.position.z);
+      const cw = new THREE.Box3().setFromObject(car);
+      carBlob.scale.set((cw.max.x - cw.min.x) * 1.5, 1, (cw.max.z - cw.min.z) * 1.25); }
+    /* tail lamps sized off the car's own bounding box — hand-guessed numbers
+       had them hanging a metre outside the bodywork */
+    const cb = new THREE.Box3().setFromObject(car);
+    const rear = cb.min.z + 0.004, halfW = (cb.max.x - cb.min.x) / 2;
+    const tail = new THREE.MeshBasicMaterial({ color: 0xd8442a, fog: false });
+    for (const sgn of [-1, 1]) {
+      const l = new THREE.Mesh(new THREE.BoxGeometry(halfW * 0.42, 0.022, 0.01), tail);
+      l.position.set(car.position.x + sgn * halfW * 0.58, cb.min.y + (cb.max.y - cb.min.y) * 0.42, rear);
+      scene.add(l);
+    }
+    const beam = new THREE.SpotLight(0xfff0d0, 6, 6, 0.5, 0.6, 1.6);
+    beam.position.set(car.position.x, 0.16, car.position.z + 0.26);
+    beam.target.position.set(car.position.x, 0, car.position.z + 4);
+    scene.add(beam); scene.add(beam.target);
     key.target.position.copy(car.position); scene.add(key.target);
   }
 
