@@ -537,12 +537,13 @@ async function clinic({ loadGLB, debugBands }) {
     put(box(LOB_W + 0.5, riser, 0.16, mat.wall),
         0, 0.07 + riser * (stepN - i) - riser / 2, halfZ + LAND_D + 0.08 + i * 0.16);
   }
-  // low planters flanking the entrance
+  // low planters flanking the STEPS — kept clear of the ramp run
+  const planterZ = halfZ + LAND_D + 0.42, planterX = LOB_W / 2 + 0.5;
   [-1, 1].forEach((s) => {
-    put(box(0.5, 0.22, 0.5, mat.inkSoft), s * (LOB_W / 2 + 0.75), 0.16, halfZ + 0.42);
-    const shrub = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 1),
+    put(box(0.42, 0.2, 0.42, mat.inkSoft), s * planterX, 0.17, planterZ);
+    const shrub = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 1),
       new THREE.MeshStandardMaterial({ color: 0x3f6f58, roughness: 1 }));
-    shrub.castShadow = true; put(shrub, s * (LOB_W / 2 + 0.75), 0.36, halfZ + 0.42);
+    shrub.castShadow = true; put(shrub, s * planterX, 0.34, planterZ);
   });
 
   // ---------- accessible ramp: parallel to the facade, off the landing edge ----------
@@ -663,7 +664,7 @@ async function clinic({ loadGLB, debugBands }) {
   put(signLight, 0, PL_H + TOP + TOW_H * 0.5, halfZ + 0.5);
 
   // monument sign at the street edge: a real slab on a base, faces both ways
-  const monX = halfX + 0.75, monZ = halfZ + 1.35;
+  const monX = courtW / 2 - 0.8, monZ = halfZ + 1.4;   // fully on the pavement
   const MON_W = 0.95, MON_H = 0.72, MON_D = 0.16;
   put(box(MON_W + 0.16, 0.1, MON_D + 0.14, mat.inkSoft), monX, 0.12, monZ);      // base
   put(box(MON_W, MON_H, MON_D, mat.ink), monX, 0.17 + MON_H / 2, monZ);          // slab
