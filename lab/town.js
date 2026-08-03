@@ -335,6 +335,9 @@ const HOUSE_SCHEMES = [
      type came on at once and whole streets switched together. Two twins
      per combination lets each house decide for itself.                 */
   const TYPES = ["a", "b", "c", "e", "g", "h", "j", "l", "n", "q"];
+  /* measured from the door vertices: every type fronts -Z except b and j,
+     which front +Z — rotate those two at load so placement can assume -Z */
+  const FRONT_PLUS_Z = new Set(["b", "j"]);
   const houseInst = [], houseLit = [];
   for (let ti = 0; ti < TYPES.length; ti++) {
     for (let si = 0; si < HOUSE_SCHEMES.length; si++) {
@@ -344,6 +347,7 @@ const HOUSE_SCHEMES = [
       for (const lit of [false, true]) {
         try {
           const src = await load(`houses/building-type-${TYPES[ti]}`);
+          if (FRONT_PLUS_Z.has(TYPES[ti])) src.traverse((o) => { if (o.isMesh) o.geometry.rotateY(Math.PI); });
           await paint(src, "houses",
             { 0: s.roof, 1: s.door, 3: s.wall, 5: lit ? 0xffc27a : 0x2b3c56, 7: s.trim }, A);
           if (lit) src.traverse((o) => { if (o.isMesh) { o.material.emissiveMap = o.material.map; o.material.emissive = new THREE.Color(0x6a4a20); } });
@@ -462,6 +466,7 @@ const HOUSE_SCHEMES = [
   /* every lit frontage also drops a warm mote here — from the air these
      are what make the town twinkle; up close they melt into the windows */
   const practicals = [];
+  const driveSpots = [];                 // [x, z, heading] — cars park nose-in here
   let houses = 0, hi = 0;
   function lot(sx, sz, dx, dz, along) {
     // sx,sz street tile; dx,dz unit normal pointing away from the street
@@ -479,7 +484,7 @@ const HOUSE_SCHEMES = [
     const jx = along.x * range(-0.16, 0.16), jz = along.z * range(-0.16, 0.16);
     const wx = gx(cx) + jx, wz = gz(cz) + jz;
     const scale = range(0.86, 1.06);
-    const ry = Math.atan2(dx, dz);                      // house front (+Z) faces the street
+    const ry = Math.atan2(dx, dz);                      // fronts are -Z; this turns them to the street
     const c = Math.cos(ry), sn = Math.sin(ry);
     /* test the real rotated footprint, not a bounding circle — a deep narrow
        house fits a corner lot that a circle test would reject outright */
@@ -512,8 +517,9 @@ const HOUSE_SCHEMES = [
     const ox = along.x * side * 0.42, oz = along.z * side * 0.42;
     if (driveInst) {
       QT.setFromAxisAngle(AX, ry);
-      M4.compose(V3.set(gx(sx + dx * 0.82) + ox, 0.004, gz(sz + dz * 0.82) + oz), QT, S3.set(1.0, 1, 2.1));
+      M4.compose(V3.set(gx(sx + dx * 0.77) + ox, 0.0235, gz(sz + dz * 0.77) + oz), QT, S3.set(1.0, 1, 2.35));
       if (driveInst.count < driveInst.instanceMatrix.count) driveInst.setMatrixAt(driveInst.count++, M4);
+      driveSpots.push([gx(sx + dx * 1.02) + ox, gz(sz + dz * 1.02) + oz, ry + Math.PI]);
     }
     // a street tree in the verge, opposite the drive
     if (trees.length && rnd() < 0.7) {
@@ -581,7 +587,7 @@ const HOUSE_SCHEMES = [
       const cx = SPINE + side * (0.74 + hd);             // ~2 m of footpath in front
       if (z + hw * 2 > DOWNTOWN.z1) break;
       const cz = z + hw;
-      const ry = side < 0 ? Math.PI / 2 : -Math.PI / 2;  // front (+Z) faces the street
+      const ry = side * Math.PI / 2;                     // shopfronts are -Z; turn them to the street
       if (push(s, gx(cx), 0, gz(cz), ry)) {
         shops++;
         poolAt(gx(SPINE + side * 0.62), gz(cz), ry, 0.9, hw * 2.2);
@@ -591,7 +597,7 @@ const HOUSE_SCHEMES = [
         const nAwn = Math.max(1, Math.round(hw * 2 / 0.95));
         for (let k = 0; k < nAwn; k++) {
           const oz = (k - (nAwn - 1) / 2) * (hw * 2 / nAwn);
-          push(awn, gx(cx - side * hd), 0.24, gz(cz) + oz, ry, 0.85);
+          push(awn, gx(cx - side * hd), 0.24, gz(cz) + oz, ry + Math.PI, 0.85);
         }
       }
       for (let t = Math.floor(z); t <= Math.ceil(z + hw * 2); t++) { claim(SPINE + side, t); claim(SPINE + side * 2, t); }
@@ -606,13 +612,21 @@ const HOUSE_SCHEMES = [
     bulbMat.color.multiplyScalar(2.4);                   // past 1 so bloom catches them
     const bulbs = new THREE.InstancedMesh(bulbGeo, bulbMat, 140);
     bulbs.count = 0; bulbs.frustumCulled = false; scene.add(bulbs);
+    const wire = [];
     for (let zz = DOWNTOWN.z0 + 0.4; zz < DOWNTOWN.z1; zz += 0.8) {
+      let prev = null;
       for (let k = 0; k <= 12; k++) {
         const t2 = k / 12;
-        push(bulbs, gx(SPINE) + (t2 - 0.5) * 1.16, 0.6 - Math.sin(Math.PI * t2) * 0.1, gz(zz), 0, 1);
+        const wx2 = gx(SPINE) + (t2 - 0.5) * 1.16, wy2 = 0.6 - Math.sin(Math.PI * t2) * 0.1;
+        push(bulbs, wx2, wy2, gz(zz), 0, 1);
+        if (prev) wire.push(prev[0], prev[1] + 0.014, prev[2], wx2, wy2 + 0.014, gz(zz));
+        prev = [wx2, wy2, gz(zz)];
       }
     }
     bulbs.instanceMatrix.needsUpdate = true;
+    const wg = new THREE.BufferGeometry();
+    wg.setAttribute("position", new THREE.Float32BufferAttribute(wire, 3));
+    scene.add(new THREE.LineSegments(wg, new THREE.LineBasicMaterial({ color: 0x10131c })));
   }
 
   /* ---- the park: one block left green, so the air view has a lung -- */
@@ -697,6 +711,39 @@ const HOUSE_SCHEMES = [
         const vertical = R(x, z - 1) || R(x, z + 1);
         if (Math.abs(vertical ? p.x - gx(x) : p.z - gz(z)) < 0.4) badPoles++; }
       if (badPoles) report.push(`lamps ${badPoles}/${lampInst.count} poles in the lane`); }
+    /* orientation: fronts are -Z after normalisation, so every instance's
+       front sample point must sit nearer the carriageway than its back.
+       This is the check that would have caught the backwards lamps and
+       the shops mooning the street. */
+    const facing = (label, insts) => {
+      let bad = 0, total = 0;
+      const f = new THREE.Vector3(), bk = new THREE.Vector3();
+      for (const i of insts) {
+        if (!i) continue;
+        const hz = i.userData.half ? i.userData.half[1] : 0.4;
+        for (let k = 0; k < i.count; k++) {
+          total++;
+          i.getMatrixAt(k, m);
+          f.set(0, 0, -hz * 0.8).applyMatrix4(m);
+          bk.set(0, 0, hz * 0.8).applyMatrix4(m);
+          if (roadGap(f.x, f.z) > roadGap(bk.x, bk.z) + 0.01) bad++;
+        }
+      }
+      if (bad) report.push(`${label} ${bad}/${total} facing away from their street`);
+    };
+    facing("houses", [...houseInst, ...houseLit]);
+    facing("shops", shopInst);
+    if (lampInst) {
+      let badArm = 0;
+      for (let k = 0; k < lampInst.count; k++) {
+        lampInst.getMatrixAt(k, m);
+        p.set(0, 0.65, -0.15).applyMatrix4(m);
+        const lens = roadGap(p.x, p.z);
+        p.set(0, 0, 0.02).applyMatrix4(m);
+        if (lens > roadGap(p.x, p.z) + 0.005) badArm++;
+      }
+      if (badArm) report.push(`lamps ${badArm}/${lampInst.count} arms turned away from the road`);
+    }
     console.log("audit:", report.length ? report.join(" · ") : "clear");
     return report;
   }
@@ -853,16 +900,17 @@ const HOUSE_SCHEMES = [
     if (step % 4) continue;
     const side = ((vertical ? x : z) + step) % 8 < 4 ? 1 : -1;
     const dx = vertical ? side : 0, dz = vertical ? 0 : side;
-    // the lamp model's arm reaches out along -Z, so face it at the road
-    const ry = Math.atan2(-dx, -dz);
+    // the arm reaches along -Z (lens measured at z=-0.15): atan2(dx,dz)
+    // maps -Z onto (-dx,-dz), which is the direction back towards the road
+    const ry = Math.atan2(dx, dz);
     const px = gx(x) + dx * 0.47, pz = gz(z) + dz * 0.47;
     if (!push(lampInst, px, 0, pz, ry, 1)) continue;
     lamps++;
-    push(glowInst, px - dx * 0.17, 0.64, pz - dz * 0.17, 0, 1);
+    push(glowInst, px - dx * 0.15, 0.65, pz - dz * 0.15, 0, 1);
     // real point lights are expensive — only along the route
     if (Math.abs(x - SPINE) <= 1) {
       const pl = new THREE.PointLight(0xffb877, 1.6, 4.2, 2);
-      pl.position.set(px - dx * 0.17, 0.6, pz - dz * 0.17);
+      pl.position.set(px - dx * 0.15, 0.6, pz - dz * 0.15);
       scene.add(pl);
     }
   }
@@ -943,15 +991,24 @@ const HOUSE_SCHEMES = [
         i.castShadow = true; i.receiveShadow = true; i.count = 0; i.frustumCulled = false;
         scene.add(i); return i;
       });
+      /* an 8 m street has no room for mid-lane parking — cars live on the
+         driveways, nose-in, with just a few hugging the kerb elsewhere */
+      const ti2 = PARKED.findIndex(([n2]) => n2 === name);
+      for (let k = ti2; k < driveSpots.length; k += PARKED.length) {
+        if (rnd() > 0.4) continue;
+        const [px, pz, hry] = driveSpots[k];
+        grp.forEach((i) => push(i, px, lift + 0.004, pz, hry, CAR_SCALE));
+        blobAt(px, pz, hry, bw, bd);
+      }
       const onRoute = (x, z) =>
         (x === SPINE && z <= 18) || (z === 18 && x >= SPINE && x <= 20) || (x === 20 && z >= 18);
       for (let z = 2; z < GRID - 2; z++) for (let x = 1; x < GRID - 1; x++) {
-        if (!road[z][x] || onRoute(x, z) || rnd() > 0.065) continue;
+        if (!road[z][x] || onRoute(x, z) || rnd() > 0.02) continue;
         const vertical = R(x, z - 1) || R(x, z + 1);
         const side = rnd() < 0.5 ? 1 : -1;
         const ry = vertical ? (side > 0 ? Math.PI : 0) : (side > 0 ? -Math.PI / 2 : Math.PI / 2);
-        const px = gx(x) + (vertical ? side * 0.36 : range(-0.28, 0.28));
-        const pz = gz(z) + (vertical ? range(-0.28, 0.28) : side * 0.36);
+        const px = gx(x) + (vertical ? side * 0.34 : range(-0.28, 0.28));
+        const pz = gz(z) + (vertical ? range(-0.28, 0.28) : side * 0.34);
         grp.forEach((i) => push(i, px, lift + ROAD_TOP, pz, ry, CAR_SCALE));
         blobAt(px, pz, ry, bw, bd);
       }
@@ -989,8 +1046,9 @@ const HOUSE_SCHEMES = [
   /* ---- camera presets (eye level is 0.2 u = 1.6 m) ---- */
   const look = new THREE.Vector3();
   if (CAM === "roadtop") {
-    camera.position.set(gx(SPINE), 4.2, gz(16.4));
-    look.set(gx(SPINE), 0, gz(16));
+    const rx = parseFloat(Q.get("rx") || SPINE), rz2 = parseFloat(Q.get("rz") || "16");
+    camera.position.set(gx(rx), 4.2, gz(rz2 + 0.4));
+    look.set(gx(rx), 0, gz(rz2));
   } else if (CAM === "air") {
     camera.position.set(gx(SPINE) + 9, 15, gz(30));
     look.set(gx(SPINE) - 1, 0, gz(14));
