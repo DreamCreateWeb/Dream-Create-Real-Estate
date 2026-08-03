@@ -335,6 +335,26 @@ const HOUSE_SCHEMES = [
      type came on at once and whole streets switched together. Two twins
      per combination lets each house decide for itself.                 */
   const TYPES = ["a", "b", "c", "e", "g", "h", "j", "l", "n", "q"];
+  /* Where should each type's driveway go? Measured per model (town space,
+     after the b/j normalisation):
+       front   — the drive meets a garage-reading wing/panel at local x
+       carport — q's open car shelter; the car parks under the canopy
+       garage  — j's true garage door on its +X side wall; the drive runs
+                 down the side of the house to reach it
+       side    — no garage: a parking pad past the house's side edge,
+                 s = which side (kept off the front door)                  */
+  const DRIVE_SPEC = {
+    a: { mode: "side", s: 1 },
+    b: { mode: "front", x: 0.55, w: 1.6 },     // lower right wing
+    c: { mode: "front", x: -0.37, w: 1.5 },    // lower left wing
+    e: { mode: "side", s: -1 },
+    g: { mode: "side", s: 1 },
+    h: { mode: "side", s: 1 },
+    j: { mode: "garage", s: 1 },
+    l: { mode: "side", s: -1 },
+    n: { mode: "front", x: 0.55, w: 1.5 },     // right wing under the awning
+    q: { mode: "carport", x: -0.39, w: 1.3 },  // the car shelter is the left bay
+  };
   /* measured from the door vertices: every type fronts -Z except b and j,
      which front +Z — rotate those two at load so placement can assume -Z */
   const FRONT_PLUS_Z = new Set(["b", "j"]);
@@ -356,6 +376,7 @@ const HOUSE_SCHEMES = [
           inst.geometry.computeBoundingBox();
           const bb = inst.geometry.boundingBox;
           inst.userData.half = [Math.max(-bb.min.x, bb.max.x), Math.max(-bb.min.z, bb.max.z)];
+          inst.userData.drive = DRIVE_SPEC[TYPES[ti]];
           scene.add(inst); pair.push(inst);
         } catch (e) { pair.push(null); }
       }
@@ -540,27 +561,44 @@ const HOUSE_SCHEMES = [
       practicals.push(wx - dx * 0.68 * scale, 0.34, wz - dz * 0.68 * scale);
     }
 
-    // driveway from the kerb to the house, offset to one side of the frontage
-    const side = rnd() < 0.5 ? -1 : 1;
-    const ox = along.x * side * 0.42, oz = along.z * side * 0.42;
+    /* the driveway aims at what the house actually offers: its garage-
+       reading wing, its carport bay, its true side garage — or failing all
+       of those, a pad past its side edge. Local x maps to the world as
+       (lx·cos ry, -lx·sin ry).                                            */
+    const spec = houseInst[idx].userData.drive || { mode: "side", s: 1 };
+    const hxu = houseInst[idx].userData.half[0];
+    let lx, dw = 1.0, spotD = 1.02;
+    let dlen = deep ? 3.1 : 2.35, dctr = deep ? 0.93 : 0.77;
+    if (spec.mode === "front") { lx = spec.x * scale; dw = spec.w; }
+    else if (spec.mode === "carport") { lx = spec.x * scale; dw = spec.w; spotD = deep ? 1.9 : 1.48; }
+    else if (spec.mode === "garage") {
+      lx = (hxu * scale + 0.2) * spec.s;
+      dlen += 0.75; dctr += 0.16;                 // the drive runs down the side wall
+      spotD = deep ? 1.85 : 1.42;
+    } else lx = (hxu * scale + 0.2) * spec.s;
+    const ox = lx * c, oz = -lx * sn;
     if (driveInst) {
       QT.setFromAxisAngle(AX, ry);
-      M4.compose(V3.set(gx(sx + dx * (deep ? 0.93 : 0.77)) + ox + along.x * shift, 0.0235,
-                        gz(sz + dz * (deep ? 0.93 : 0.77)) + oz + along.z * shift), QT, S3.set(1.0, 1, deep ? 3.1 : 2.35));
+      M4.compose(V3.set(gx(sx + dx * dctr) + ox + along.x * shift, 0.0235,
+                        gz(sz + dz * dctr) + oz + along.z * shift), QT, S3.set(dw, 1, dlen));
       if (driveInst.count < driveInst.instanceMatrix.count) driveInst.setMatrixAt(driveInst.count++, M4);
-      driveSpots.push([gx(sx + dx * 1.02) + ox + along.x * shift, gz(sz + dz * 1.02) + oz + along.z * shift, ry + Math.PI]);
+      driveSpots.push([gx(sx + dx * spotD) + ox + along.x * shift, gz(sz + dz * spotD) + oz + along.z * shift, ry + Math.PI]);
     }
-    // a street tree in the verge, opposite the drive
+    // a street tree in the verge, on the other side of the frontage
     if (trees.length && rnd() < 0.7) {
-      plant(pick(trees), gx(sx + dx * 0.72) - ox * 1.15, gz(sz + dz * 0.72) - oz * 1.15, range(0.4, 0.62), rnd() * 7);
+      const ts = -Math.sign(lx || 1);
+      plant(pick(trees), gx(sx + dx * 0.72) + along.x * ts * 0.5, gz(sz + dz * 0.72) + along.z * ts * 0.5, range(0.4, 0.62), rnd() * 7);
     }
-    // shrubs against the frontage
+    // shrubs against the frontage — never on the drive
     if (bushes.length) for (let b = 0; b < 2; b++) if (rnd() < 0.6) {
-      plant(pick(bushes), gx(cx) + range(-0.45, 0.45) - dx * 0.78, gz(cz) + range(-0.45, 0.45) - dz * 0.78, range(0.5, 0.9), rnd() * 7);
+      const off = range(-0.5, 0.5) * hxu * scale;
+      if (Math.abs(off - lx) < dw * 0.18 + 0.14) continue;
+      plant(pick(bushes), wx - dx * (houseInst[idx].userData.half[1] * scale + 0.16) + along.x * off,
+            wz - dz * (houseInst[idx].userData.half[1] * scale + 0.16) + along.z * off, range(0.5, 0.9), rnd() * 7);
     }
-    // a hedge down one side boundary
+    // a hedge down one side boundary — the side the drive doesn't use
     if (bushes.length && rnd() < 0.6) {
-      const hs = rnd() < 0.5 ? -1 : 1, grp = pick(bushes);
+      const hs = spec.mode === "front" ? (rnd() < 0.5 ? -1 : 1) : -Math.sign(lx || 1), grp = pick(bushes);
       for (let k = 0; k < 8; k++) {
         const d = 1.0 + k * 0.28;
         plant(grp, gx(sx + dx * d) + along.x * hs * 1.0, gz(sz + dz * d) + along.z * hs * 1.0,
