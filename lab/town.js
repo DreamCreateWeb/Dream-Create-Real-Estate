@@ -428,6 +428,10 @@ const HOUSE_SCHEMES = [
   const _C = new THREE.Color();
   const plant = (grp, x, z, s, ry) => {
     if (!grp || roadGap(x, z) < 0.06) return false;
+    // driveways are hard ground — a tree mid-drive was the giveaway
+    for (const [rcx, rcz, rhx, rhz] of driveRects) {
+      if (Math.abs(x - rcx) < rhx + 0.07 && Math.abs(z - rcz) < rhz + 0.07) return false;
+    }
     _C.setScalar(0.72 + rnd() * 0.28);
     grp.forEach((i) => { if (push(i, x, 0, z, ry, s)) i.setColorAt(i.count - 1, _C); });
     return true;
@@ -488,6 +492,7 @@ const HOUSE_SCHEMES = [
      are what make the town twinkle; up close they melt into the windows */
   const practicals = [];
   const driveSpots = [];                 // [x, z, heading] — cars park nose-in here
+  const driveRects = [];                 // [cx, cz, halfX, halfZ] — planting keeps off
   const placed = [];                     // [x, z, half-width] — no two houses may touch
   let houses = 0, hi = 0;
   function lot(sx, sz, dx, dz, along) {
@@ -568,7 +573,7 @@ const HOUSE_SCHEMES = [
     const spec = houseInst[idx].userData.drive || { mode: "side", s: 1 };
     const hxu = houseInst[idx].userData.half[0];
     let lx, dw = 1.0, spotD = 1.02;
-    let dlen = deep ? 3.1 : 2.35, dctr = deep ? 0.93 : 0.77;
+    let dlen = deep ? 3.2 : 2.5, dctr = deep ? 0.95 : 0.8;
     if (spec.mode === "front") { lx = spec.x * scale; dw = spec.w; }
     else if (spec.mode === "carport") { lx = spec.x * scale; dw = spec.w; spotD = deep ? 1.9 : 1.48; }
     else if (spec.mode === "garage") {
@@ -578,11 +583,14 @@ const HOUSE_SCHEMES = [
     } else lx = (hxu * scale + 0.2) * spec.s;
     const ox = lx * c, oz = -lx * sn;
     if (driveInst) {
+      const dcx = gx(sx + dx * dctr) + ox + along.x * shift,
+            dcz = gz(sz + dz * dctr) + oz + along.z * shift;
       QT.setFromAxisAngle(AX, ry);
-      M4.compose(V3.set(gx(sx + dx * dctr) + ox + along.x * shift, 0.0235,
-                        gz(sz + dz * dctr) + oz + along.z * shift), QT, S3.set(dw, 1, dlen));
+      M4.compose(V3.set(dcx, 0.0235, dcz), QT, S3.set(dw, 1, dlen));
       if (driveInst.count < driveInst.instanceMatrix.count) driveInst.setMatrixAt(driveInst.count++, M4);
       driveSpots.push([gx(sx + dx * spotD) + ox + along.x * shift, gz(sz + dz * spotD) + oz + along.z * shift, ry + Math.PI]);
+      const wHalf = dw * 0.18, lHalf = dlen * 0.2;
+      driveRects.push(Math.abs(sn) > 0.5 ? [dcx, dcz, lHalf, wHalf] : [dcx, dcz, wHalf, lHalf]);
     }
     // a street tree in the verge, on the other side of the frontage
     if (trees.length && rnd() < 0.7) {
@@ -1031,10 +1039,10 @@ const HOUSE_SCHEMES = [
   const blobInst = new THREE.InstancedMesh(blobGeo, blobMat, 90);
   blobInst.count = 0; blobInst.frustumCulled = false; blobInst.renderOrder = 2;
   scene.add(blobInst);
-  const blobAt = (x, z, ry, w, d) => {
+  const blobAt = (x, z, ry, w, d, y = ROAD_TOP + 0.005) => {
     if (blobInst.count >= blobInst.instanceMatrix.count) return;
     QT.setFromAxisAngle(AX, ry);
-    M4.compose(V3.set(x, ROAD_TOP + 0.005, z), QT, S3.set(w, 1, d));
+    M4.compose(V3.set(x, y, z), QT, S3.set(w, 1, d));
     blobInst.setMatrixAt(blobInst.count++, M4);
   };
 
@@ -1055,7 +1063,8 @@ const HOUSE_SCHEMES = [
   for (const [name, col] of PARKED) {
     try {
       const src = await load(`vehicles/${name}`);
-      await paint(src, "vehicles", { 6: col, 0: 0x131f31, 1: 0xffe3b0, 3: 0x3a3f4c }, A);
+      // band 1 is the lamp glass: parked cars keep theirs switched off
+      await paint(src, "vehicles", { 6: col, 0: 0x131f31, 1: 0x878d95, 3: 0x3a3f4c }, A);
       src.scale.setScalar(CAR_SCALE);
       src.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(src);
@@ -1072,8 +1081,8 @@ const HOUSE_SCHEMES = [
       for (let k = ti2; k < driveSpots.length; k += PARKED.length) {
         if (rnd() > 0.4) continue;
         const [px, pz, hry] = driveSpots[k];
-        grp.forEach((i) => push(i, px, lift + 0.004, pz, hry, CAR_SCALE));
-        blobAt(px, pz, hry, bw, bd);
+        grp.forEach((i) => push(i, px, lift + 0.034, pz, hry, CAR_SCALE));
+        blobAt(px, pz, hry, bw, bd, 0.037);
       }
       const onRoute = (x, z) =>
         (x === SPINE && z <= 18) || (z === 18 && x >= SPINE && x <= 20) || (x === 20 && z >= 18);
