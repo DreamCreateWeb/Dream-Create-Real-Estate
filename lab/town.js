@@ -713,7 +713,10 @@ const HOUSE_SCHEMES = [
   const pondC = { x: gx(22.5), z: gz(21.5) };
   {
     const pond = new THREE.Mesh(new THREE.CircleGeometry(1.45, 40),
-      new THREE.MeshStandardMaterial({ color: 0x1a2f4c, roughness: 0.06, metalness: 0.7, envMapIntensity: 1.05 }));
+      new THREE.MeshStandardMaterial({
+        /* mirror-flat water blew out white at grazing angles — a touch of
+           roughness and less metal keeps the sky in it without the glare */
+        color: 0x16283f, roughness: 0.14, metalness: 0.45, envMapIntensity: 0.75 }));
     pond.rotation.x = -Math.PI / 2; pond.position.set(pondC.x, 0.004, pondC.z);
     scene.add(pond);
     for (let a = 0; a < Math.PI * 2; a += 0.32) {
