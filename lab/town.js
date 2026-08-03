@@ -573,7 +573,7 @@ const HOUSE_SCHEMES = [
     const spec = houseInst[idx].userData.drive || { mode: "side", s: 1 };
     const hxu = houseInst[idx].userData.half[0];
     let lx, dw = 1.0, spotD = 1.02;
-    let dlen = deep ? 3.2 : 2.5, dctr = deep ? 0.95 : 0.8;
+    let dlen = deep ? 2.95 : 2.2, dctr = deep ? 1.0 : 0.86;
     if (spec.mode === "front") { lx = spec.x * scale; dw = spec.w; }
     else if (spec.mode === "carport") { lx = spec.x * scale; dw = spec.w; spotD = deep ? 1.9 : 1.48; }
     else if (spec.mode === "garage") {
@@ -1068,13 +1068,18 @@ const HOUSE_SCHEMES = [
       const src = await load(`vehicles/${name}`);
       // band 1 is the lamp glass: parked cars keep theirs switched off
       await paint(src, "vehicles", { 6: col, 0: 0x131f31, 1: 0x878d95, 3: 0x3a3f4c }, A);
-      src.scale.setScalar(CAR_SCALE);
       src.updateMatrixWorld(true);
       const b = new THREE.Box3().setFromObject(src);
-      const lift = -b.min.y, bw = (b.max.x - b.min.x) * 1.25, bd = (b.max.z - b.min.z) * 1.1;
+      const lift = -b.min.y * CAR_SCALE,
+            bw = (b.max.x - b.min.x) * CAR_SCALE * 1.25, bd = (b.max.z - b.min.z) * CAR_SCALE * 1.1;
       const parts = []; src.traverse((n) => { if (n.isMesh) parts.push(n); });
+      /* the wheels are separate meshes placed by NODE transforms — instancing
+         the raw geometry collapsed all four onto the origin, which is why
+         every parked car in town was riding on its belly. Bake each node's
+         world matrix into its geometry first. */
       const grp = parts.map((p) => {
-        const i = new THREE.InstancedMesh(p.geometry, p.material, 60);
+        const g = p.geometry.clone().applyMatrix4(p.matrixWorld);
+        const i = new THREE.InstancedMesh(g, p.material, 60);
         i.castShadow = true; i.receiveShadow = true; i.count = 0; i.frustumCulled = false;
         scene.add(i); return i;
       });
