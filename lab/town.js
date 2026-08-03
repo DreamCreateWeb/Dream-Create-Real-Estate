@@ -467,6 +467,7 @@ const HOUSE_SCHEMES = [
      are what make the town twinkle; up close they melt into the windows */
   const practicals = [];
   const driveSpots = [];                 // [x, z, heading] — cars park nose-in here
+  const placed = [];                     // [x, z, half-width] — no two houses may touch
   let houses = 0, hi = 0;
   function lot(sx, sz, dx, dz, along) {
     // sx,sz street tile; dx,dz unit normal pointing away from the street
@@ -481,30 +482,57 @@ const HOUSE_SCHEMES = [
     claim(sx + dx * 2, sz + dz * 2);
     claim(sx + dx * 3, sz + dz * 3);
 
-    const jx = along.x * range(-0.16, 0.16), jz = along.z * range(-0.16, 0.16);
-    const wx = gx(cx) + jx, wz = gz(cz) + jz;
+    /* jitter was ±0.16 — enough for two wide neighbours jittered towards
+       each other to close the whole 2-tile gap and touch */
+    const jx = along.x * range(-0.07, 0.07), jz = along.z * range(-0.07, 0.07);
     const scale = range(0.86, 1.06);
     const ry = Math.atan2(dx, dz);                      // fronts are -Z; this turns them to the street
     const c = Math.cos(ry), sn = Math.sin(ry);
-    /* test the real rotated footprint, not a bounding circle — a deep narrow
-       house fits a corner lot that a circle test would reject outright */
-    const fits = (h) => {
-      const [hx, hz] = h.userData.half;
-      for (const sx2 of [-1, 1]) for (const sz2 of [-1, 1]) {
-        const ax = sx2 * hx * scale, az = sz2 * hz * scale;
-        if (roadGap(wx + ax * c + az * sn, wz - ax * sn + az * c) < 0.02) return false;
+    /* pick the widest house that fits this spot: clear of every carriageway
+       (exact rotated footprint) AND clear of every neighbour (exact AABB —
+       all houses are axis-aligned). The old first-tile-only claim let two
+       corner lots interpenetrate; the AABB is what actually forbids it. */
+    const trySite = (setb, shift) => {
+      const wx2 = gx(sx + dx * setb) + jx + along.x * shift,
+            wz2 = gz(sz + dz * setb) + jz + along.z * shift;
+      const fits = (h) => {
+        const [hx, hz] = h.userData.half;
+        /* corners AND edge midpoints — a road stub ending mid-wall slips
+           between corner samples */
+        for (const [ux, uz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, -1], [0, 1], [-1, 0], [1, 0]]) {
+          const ax = ux * hx * scale, az = uz * hz * scale;
+          if (roadGap(wx2 + ax * c + az * sn, wz2 - ax * sn + az * c) < 0.02) return false;
+        }
+        const axh = (Math.abs(sn) > 0.5 ? hz : hx) * scale, azh = (Math.abs(sn) > 0.5 ? hx : hz) * scale;
+        for (const [px2, pz2, pxh, pzh] of placed) {
+          if (Math.abs(wx2 - px2) < axh + pxh + 0.04 && Math.abs(wz2 - pz2) < azh + pzh + 0.04) return false;
+        }
+        return true;
+      };
+      for (let k = 0; k < houseInst.length; k++) {
+        const j = (hi + k) % houseInst.length;
+        if (fits(houseInst[j])) return { idx: j, wx2, wz2, adv: k + 1 };
       }
-      return true;
+      return null;
     };
-    // a tight corner lot gets a narrower house rather than no house at all
-    let idx = -1;
-    for (let k = 0; k < houseInst.length; k++) {
-      const j = (hi + k) % houseInst.length;
-      if (fits(houseInst[j])) { idx = j; hi += k + 1; break; }
+    /* a blocked corner lot dodges before giving up: sideways along its own
+       street (away from the perpendicular neighbour), then deeper, then both */
+    let site = null, deep = false, shift = 0;
+    for (const [setb, sh] of [[SETBACK, 0], [SETBACK, 0.55], [SETBACK, -0.55],
+                              [SETBACK + 0.42, 0], [SETBACK + 0.42, 0.55], [SETBACK + 0.42, -0.55]]) {
+      site = trySite(setb, sh);
+      if (site) { deep = setb > SETBACK; shift = sh; break; }
     }
-    if (idx < 0) return false;
+    if (!site) { (globalThis.__lotFail ??= {}).noFit = (globalThis.__lotFail.noFit || 0) + 1; return false; }
+    const { idx, wx2: wx, wz2: wz } = site;
+    hi += site.adv;
     const evening = rnd() < 0.45;                        // this house, not this type
     if (!push(evening ? houseLit[idx] : houseInst[idx], wx, 0, wz, ry, scale)) return false;
+    {
+      const [hx2, hz2] = houseInst[idx].userData.half;
+      const sn2 = Math.abs(Math.sin(ry)) > 0.5;
+      placed.push([wx, wz, (sn2 ? hz2 : hx2) * scale, (sn2 ? hx2 : hz2) * scale]);
+    }
     houses++;
     // lit windows spill onto the front garden
     if (evening) {
@@ -517,9 +545,10 @@ const HOUSE_SCHEMES = [
     const ox = along.x * side * 0.42, oz = along.z * side * 0.42;
     if (driveInst) {
       QT.setFromAxisAngle(AX, ry);
-      M4.compose(V3.set(gx(sx + dx * 0.77) + ox, 0.0235, gz(sz + dz * 0.77) + oz), QT, S3.set(1.0, 1, 2.35));
+      M4.compose(V3.set(gx(sx + dx * (deep ? 0.93 : 0.77)) + ox + along.x * shift, 0.0235,
+                        gz(sz + dz * (deep ? 0.93 : 0.77)) + oz + along.z * shift), QT, S3.set(1.0, 1, deep ? 3.1 : 2.35));
       if (driveInst.count < driveInst.instanceMatrix.count) driveInst.setMatrixAt(driveInst.count++, M4);
-      driveSpots.push([gx(sx + dx * 1.02) + ox, gz(sz + dz * 1.02) + oz, ry + Math.PI]);
+      driveSpots.push([gx(sx + dx * 1.02) + ox + along.x * shift, gz(sz + dz * 1.02) + oz + along.z * shift, ry + Math.PI]);
     }
     // a street tree in the verge, opposite the drive
     if (trees.length && rnd() < 0.7) {
@@ -538,8 +567,9 @@ const HOUSE_SCHEMES = [
               range(0.5, 0.62), rnd() * 7);
       }
     }
-    // the back garden: a canopy tree and some low planting
-    if (trees.length && rnd() < 0.7) {
+    // the back garden: a canopy tree and some low planting — unless the
+    // house itself was dodged deep into the garden and needs the room
+    if (!deep && trees.length && rnd() < 0.7) {
       plant(pick(trees), gx(sx + dx * 2.9) + range(-0.45, 0.45), gz(sz + dz * 2.9) + range(-0.45, 0.45), range(0.55, 0.9), rnd() * 7);
     }
     if (bushes.length) for (let b = 0; b < 2; b++) if (rnd() < 0.5) {
@@ -1042,6 +1072,7 @@ const HOUSE_SCHEMES = [
     tris += n * (o.isInstancedMesh ? o.count : 1);
   });
   const treeCount = trees.reduce((a, g) => a + (g[0] ? g[0].count : 0), 0);
+  console.log("audit-lots:", JSON.stringify(globalThis.__lotFail || {}));
   hud.innerHTML =
     `<b>town</b>  ${GRID}×${GRID} tiles · 1 tile ≈ 8 m<br>` +
     `<span class="dim">houses</span> ${houses} &nbsp; <span class="dim">shops</span> ${shops} &nbsp; <span class="dim">trees</span> ${treeCount} &nbsp; <span class="dim">lamps</span> ${lamps}<br>` +
@@ -1062,6 +1093,12 @@ const HOUSE_SCHEMES = [
   } else if (CAM === "mid") {
     camera.position.set(gx(SPINE) + 3.4, 3.2, gz(26));
     look.set(gx(SPINE), 0.35, gz(15));
+  } else if (CAM === "ground") {
+    /* debug: stand anywhere — &rx=&rz= grid pos, &ry= heading in degrees */
+    const rx = parseFloat(Q.get("rx") || SPINE), rz2 = parseFloat(Q.get("rz") || "22");
+    const hd = (parseFloat(Q.get("ry") || "0")) * Math.PI / 180;
+    camera.position.set(gx(rx), 0.24, gz(rz2));
+    look.set(gx(rx) - Math.sin(hd) * 8, 0.26, gz(rz2) - Math.cos(hd) * 8);
   } else if (CAM === "park") {
     camera.position.set(pondC.x + 2.6, 2.1, pondC.z + 3.4);
     look.set(pondC.x, 0.1, pondC.z);
