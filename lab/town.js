@@ -660,11 +660,18 @@ const HOUSE_SCHEMES = [
   /* park planting: big canopies round a clear middle, so it reads as
      managed parkland rather than the leftover scrub between blocks */
   for (let x = PARK.x0; x <= PARK.x1; x++) for (let z = PARK.z0; z <= PARK.z1; z++) {
-    if (Math.hypot(gx(x) - pondC.x, gz(z) - pondC.z) < 1.9) continue;
+    const pondD = Math.hypot(gx(x) - pondC.x, gz(z) - pondC.z);
+    if (pondD < 1.9) continue;
     const edge = x === PARK.x0 || x === PARK.x1 || z === PARK.z0 || z === PARK.z1;
-    const n = edge ? 2 : (rnd() < 0.35 ? 1 : 0);
+    /* the water needs a vista: no canopy inside the park at all — trees
+       live on the outer edge ring only, and the east edge stays open so
+       the pond reads from the avenue the route drives down */
+    const vista = x === PARK.x1 && Math.abs(gz(z) - pondC.z) < 2.2;
+    const n = edge && !vista ? (pondD < 3.4 ? 1 : 2) : 0;
     for (let k = 0; k < n; k++) {
-      plant(pick(trees), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.65, 1.05), rnd() * 7);
+      const tx2 = gx(x) + range(-0.45, 0.45), tz2 = gz(z) + range(-0.45, 0.45);
+      if (Math.hypot(tx2 - pondC.x, tz2 - pondC.z) < 2.6) continue;
+      plant(pick(trees), tx2, tz2, range(0.65, 1.05), rnd() * 7);
     }
     if (bushes.length && rnd() < 0.5) plant(pick(bushes), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.6, 0.95), rnd() * 7);
     if (tufts.length && rnd() < 0.35) plant(pick(tufts), gx(x) + range(-0.45, 0.45), gz(z) + range(-0.45, 0.45), range(0.6, 1.0), rnd() * 7);
