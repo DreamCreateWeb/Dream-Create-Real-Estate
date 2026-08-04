@@ -571,6 +571,8 @@ const HOUSE_SCHEMES = [
        of those, a pad past its side edge. Local x maps to the world as
        (lx·cos ry, -lx·sin ry).                                            */
     const spec = houseInst[idx].userData.drive || { mode: "side", s: 1 };
+    if (Q.has("tlog") && spec.mode !== "side")
+      console.log("audit-place:", spec.mode, wx.toFixed(1), wz.toFixed(1), "grid", (wx / TILE + (GRID - 1) / 2).toFixed(1), (wz / TILE + (GRID - 1) / 2).toFixed(1));
     const hxu = houseInst[idx].userData.half[0];
     let lx, dw = 1.0, spotD = 1.02;
     let dlen = deep ? 2.95 : 2.2, dctr = deep ? 1.0 : 0.86;
@@ -691,9 +693,10 @@ const HOUSE_SCHEMES = [
     const wire = [];
     for (let zz = DOWNTOWN.z0 + 0.4; zz < DOWNTOWN.z1; zz += 0.8) {
       let prev = null;
-      for (let k = 0; k <= 12; k++) {
-        const t2 = k / 12;
-        const wx2 = gx(SPINE) + (t2 - 0.5) * 1.16, wy2 = 0.6 - Math.sin(Math.PI * t2) * 0.1;
+      for (let k = 0; k <= 14; k++) {
+        const t2 = k / 14;
+        // the shopfront planes sit at exactly ±0.74 — the wire reaches them
+        const wx2 = gx(SPINE) + (t2 - 0.5) * 1.5, wy2 = 0.62 - Math.sin(Math.PI * t2) * 0.13;
         push(bulbs, wx2, wy2, gz(zz), 0, 1);
         if (prev) wire.push(prev[0], prev[1] + 0.014, prev[2], wx2, wy2 + 0.014, gz(zz));
         prev = [wx2, wy2, gz(zz)];
