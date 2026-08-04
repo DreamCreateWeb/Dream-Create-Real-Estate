@@ -28,7 +28,7 @@ import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { paint, tintByMaterial } from "./rigs.js";
 
 const Q = new URLSearchParams(location.search);
-const CAM = Q.get("cam") || "air";
+const CAM = Q.get("cam") || "fly";     // fly: the walk-through rig
 const T = parseFloat(Q.get("t") || "0.35");
 const A = "../assets/";
 const hud = document.getElementById("hud");
@@ -1141,7 +1141,12 @@ const HOUSE_SCHEMES = [
 
   /* ---- camera presets (eye level is 0.2 u = 1.6 m) ---- */
   const look = new THREE.Vector3();
-  if (CAM === "roadtop") {
+  if (FLY.on) {
+    hud.innerHTML +=
+      `<br><span class="dim">drag</span> look &nbsp; <span class="dim">WASD</span> move &nbsp; ` +
+      `<span class="dim">Q/E</span> down/up &nbsp; <span class="dim">shift</span> sprint &nbsp; ` +
+      `<span class="dim">scroll</span> speed &nbsp; <span class="dim">dbl-click</span> eye level`;
+  } else if (CAM === "roadtop") {
     const rx = parseFloat(Q.get("rx") || SPINE), rz2 = parseFloat(Q.get("rz") || "16");
     camera.position.set(gx(rx), 4.2, gz(rz2 + 0.4));
     look.set(gx(rx), 0, gz(rz2));
@@ -1173,7 +1178,7 @@ const HOUSE_SCHEMES = [
     camera.position.y = 0.34;
     look.copy(p).addScaledVector(tg, 3.0); look.y = 0.22;
   }
-  camera.lookAt(look);
+  if (!FLY.on) camera.lookAt(look);
 
   if (car) {
     const t = THREE.MathUtils.clamp(T, 0, 1);
@@ -1205,6 +1210,51 @@ const HOUSE_SCHEMES = [
   window.__ready = true;
 })();
 
+/* ---------------- the fly rig ----------------
+   Rough scout controls for walking the scene:
+     drag = look · WASD/arrows = move · Q/E = down/up
+     Shift = sprint · scroll = speed · double-click = eye level
+   Movement runs in the render loop off camera-local axes.   */
+const FLY = { on: CAM === "fly", yaw: 0.56, pitch: -0.67, speed: 3.2, keys: {}, last: performance.now() };
+if (FLY.on) {
+  camera.position.set(gx(SPINE) + 9, 15, gz(30));
+  hud.innerHTML = "flying in…";
+  const cv = renderer.domElement;
+  let drag = null;
+  cv.style.cursor = "grab";
+  cv.addEventListener("pointerdown", (e) => { drag = [e.clientX, e.clientY]; cv.style.cursor = "grabbing"; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener("pointerup", (e) => { drag = null; cv.style.cursor = "grab"; cv.releasePointerCapture(e.pointerId); });
+  cv.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    FLY.yaw -= (e.clientX - drag[0]) * 0.0034;
+    FLY.pitch = THREE.MathUtils.clamp(FLY.pitch - (e.clientY - drag[1]) * 0.0034, -1.45, 1.45);
+    drag = [e.clientX, e.clientY];
+  });
+  addEventListener("keydown", (e) => { FLY.keys[e.code] = true; });
+  addEventListener("keyup", (e) => { FLY.keys[e.code] = false; });
+  addEventListener("blur", () => { FLY.keys = {}; });
+  addEventListener("wheel", (e) => {
+    FLY.speed = THREE.MathUtils.clamp(FLY.speed * Math.exp(-e.deltaY * 0.0012), 0.3, 30);
+  }, { passive: true });
+  cv.addEventListener("dblclick", () => { camera.position.y = 0.24; FLY.pitch = 0; });
+}
+function flyStep() {
+  const now = performance.now(), dt = Math.min((now - FLY.last) / 1000, 0.1);
+  FLY.last = now;
+  const k = FLY.keys, sp = FLY.speed * (k.ShiftLeft || k.ShiftRight ? 4 : 1) * dt;
+  const cy = Math.cos(FLY.yaw), sy = Math.sin(FLY.yaw), cp = Math.cos(FLY.pitch), spt = Math.sin(FLY.pitch);
+  const fwd = new THREE.Vector3(-sy * cp, spt, -cy * cp);
+  const rt = new THREE.Vector3(cy, 0, -sy);
+  if (k.KeyW || k.ArrowUp) camera.position.addScaledVector(fwd, sp);
+  if (k.KeyS || k.ArrowDown) camera.position.addScaledVector(fwd, -sp);
+  if (k.KeyD || k.ArrowRight) camera.position.addScaledVector(rt, sp);
+  if (k.KeyA || k.ArrowLeft) camera.position.addScaledVector(rt, -sp);
+  if (k.KeyE || k.Space) camera.position.y += sp;
+  if (k.KeyQ || k.KeyC) camera.position.y -= sp;
+  camera.position.y = Math.max(camera.position.y, 0.09);   // never under the ground
+  camera.quaternion.setFromEuler(new THREE.Euler(FLY.pitch, FLY.yaw, 0, "YXZ"));
+}
+
 /* ---------------- compose ---------------- */
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
@@ -1232,6 +1282,7 @@ addEventListener("resize", () => {
 });
 (function loop() {
   const t = performance.now() / 1000;
+  if (FLY.on) flyStep();
   if (FX.flies) {
     const a = FX.flies.pts.geometry.attributes.position, b = FX.flies.base, ph = FX.flies.ph;
     for (let i = 0; i < ph.length; i++) {
