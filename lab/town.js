@@ -30,7 +30,9 @@ import { paint, tintByMaterial } from "./rigs.js";
 const Q = new URLSearchParams(location.search);
 const CAM = Q.get("cam") || "fly";     // fly: the walk-through rig
 const T = parseFloat(Q.get("t") || "0.35");
-const A = "../assets/";
+/* asset base — a hosting shell (e.g. the Vercel scout deploy) can point this
+   at a CDN copy of the repo before importing the module */
+const A = globalThis.__ASSET_BASE || "../assets/";
 const hud = document.getElementById("hud");
 globalThis.__paintDebug = Q.has("pdbg");
 
