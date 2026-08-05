@@ -25,7 +25,7 @@ import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
-import { paint, tintByMaterial } from "./rigs.js";
+import { paint, tintByMaterial, makeTreeLOD } from "./rigs.js";
 
 const Q = new URLSearchParams(location.search);
 const CAM = Q.get("cam") || "fly";     // fly: the walk-through rig
@@ -387,30 +387,35 @@ const HOUSE_SCHEMES = [
     }
   }
 
-  /* ---- greenery: one instancer group per model (2 materials each) ---- */
-  const GREEN = [
-    ["tree_oak",        0x2c4d38, 0x4b3b2e],
-    ["tree_default",    0x2f5840, 0x483828],
-    ["tree_fat",        0x356040, 0x413226],
-    ["tree_detailed",   0x2a4f3a, 0x4d3c2d],
-    ["tree_pineRoundA", 0x22422f, 0x3d3025],
-    ["tree_cone",       0x1f3d2d, 0x3a2e24],
-    ["tree_oak_dark",   0x30584e, 0x443930],   // dusk-teal — the dream accent
-    ["tree_detailed_dark", 0x483845, 0x42322a], // dusty plum, rare and quiet
+  /* ---- trees: procedural, with three REAL LOD tiers ----------------
+     The kit trees were single convex hulls — dead up close. These carry
+     clustered, jittered foliage at the hero tier, thin out mid-range and
+     collapse to silhouettes far off. Instances re-bucket by camera
+     distance in the render loop, so detail follows the fly-through.    */
+  /* tones sit close together — at dusk a bright top lobe reads as noon */
+  const TREE_VARIANTS = [
+    { kind: "round", leaf: 0x2a4c38, light: 0x47714c, bark: 0x4a3a2c },
+    { kind: "round", leaf: 0x27432f, light: 0x406540, bark: 0x453626 },
+    { kind: "tall",  leaf: 0x2e5342, light: 0x4a7a52, bark: 0x4f3d2e },
+    { kind: "pine",  leaf: 0x1f3a2a, light: 0x35573c, bark: 0x3d3025 },
+    { kind: "round", leaf: 0x2b5048, light: 0x467a6b, bark: 0x443930 },  // dusk-teal accent
+    { kind: "round", leaf: 0x413342, light: 0x60495c, bark: 0x42322a },  // dusty plum accent
   ];
-  const trees = [];
-  for (const [name, leaf, bark] of GREEN) {
-    try {
-      const src = await load(`nature/${name}`);
-      tintByMaterial(src, { leafs: leaf, grass: leaf, wood: bark, bark });
-      const parts = []; src.traverse((n) => { if (n.isMesh) parts.push(n); });
-      trees.push(parts.map((p) => {
-        const i = new THREE.InstancedMesh(p.geometry, p.material, 900);
-        i.castShadow = true; i.receiveShadow = true; i.count = 0; i.frustumCulled = false;
-        scene.add(i); return i;
-      }));
-    } catch (e) {}
-  }
+  const treeMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.92, metalness: 0 });
+  const TREE_CAPS = [160, 360, 700];
+  const TREE_LODS = [], treeRecs = [];
+  TREE_VARIANTS.forEach((v, vi) => {
+    const { lods } = makeTreeLOD(v.kind, vi * 31 + 7, v.leaf, v.light, v.bark);
+    TREE_LODS[vi] = lods.map((g, ti) => {
+      const im = new THREE.InstancedMesh(g, treeMat, TREE_CAPS[ti]);
+      im.castShadow = ti < 2; im.receiveShadow = true;
+      im.count = 0; im.frustumCulled = false;
+      scene.add(im); return im;
+    });
+    treeRecs[vi] = [];
+  });
+  // what pick(trees) draws from — the dream accents stay rare
+  const trees = [0, 0, 1, 1, 2, 2, 3, 3, 4, 5];
   const bushes = [], tufts = [];
   for (const [name, c, into] of [["plant_bush", 0x3d6b45, 0], ["plant_bushLarge", 0x436f48, 0],
                                  ["grass_large", 0x456845, 1]]) {
@@ -430,15 +435,47 @@ const HOUSE_SCHEMES = [
      what stops a street of identical models reading as copy-paste. */
   const _C = new THREE.Color();
   const plant = (grp, x, z, s, ry) => {
-    if (!grp || roadGap(x, z) < 0.06) return false;
+    if (grp == null || roadGap(x, z) < 0.06) return false;
     // driveways are hard ground — a tree mid-drive was the giveaway
     for (const [rcx, rcz, rhx, rhz] of driveRects) {
       if (Math.abs(x - rcx) < rhx + 0.07 && Math.abs(z - rcz) < rhz + 0.07) return false;
     }
-    _C.setScalar(0.72 + rnd() * 0.28);
+    const k = 0.72 + rnd() * 0.28;
+    if (typeof grp === "number") {            // a tree variant: record, bucket later
+      treeRecs[grp].push(x, z, ry, s, k);
+      return true;
+    }
+    _C.setScalar(k);
     grp.forEach((i) => { if (push(i, x, 0, z, ry, s)) i.setColorAt(i.count - 1, _C); });
     return true;
   };
+
+  /* assign every tree to a LOD tier by distance from the camera; runs on
+     build and every few frames of the fly-through */
+  function rebucketTrees() {
+    const cx2 = camera.position.x, cz2 = camera.position.z;
+    for (let vi = 0; vi < TREE_LODS.length; vi++) {
+      const meshes = TREE_LODS[vi], recs = treeRecs[vi], counts = [0, 0, 0];
+      for (let i = 0; i < recs.length; i += 5) {
+        const ddx = recs[i] - cx2, ddz = recs[i + 1] - cz2, d2 = ddx * ddx + ddz * ddz;
+        let t = d2 < 42 ? 0 : d2 < 300 ? 1 : 2;
+        while (counts[t] >= TREE_CAPS[t] && t < 2) t++;
+        if (counts[t] >= TREE_CAPS[t]) continue;
+        QT.setFromAxisAngle(AX, recs[i + 2]);
+        M4.compose(V3.set(recs[i], 0, recs[i + 1]), QT, S3.setScalar(recs[i + 3]));
+        meshes[t].setMatrixAt(counts[t], M4);
+        _C.setScalar(recs[i + 4]);
+        meshes[t].setColorAt(counts[t], _C);
+        counts[t]++;
+      }
+      meshes.forEach((im, ti) => {
+        im.count = counts[ti];
+        im.instanceMatrix.needsUpdate = true;
+        if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      });
+    }
+  }
+  globalThis.__rebucket = rebucketTrees;
 
   /* ---- driveways ---- */
   let driveInst = null;
@@ -808,9 +845,10 @@ const HOUSE_SCHEMES = [
     };
     check("houses", [...houseInst, ...houseLit], 0.0, 0.92);
     let badTrunks = 0, trunks = 0;
-    for (const g of trees) { const i = g[0]; if (!i) continue;
-      for (let k = 0; k < i.count; k++) { trunks++; i.getMatrixAt(k, m); m.decompose(p, q, sc);
-        if (roadGap(p.x, p.z) < 0.05) badTrunks++; } }
+    for (const recs of treeRecs) for (let i = 0; i < recs.length; i += 5) {
+      trunks++;
+      if (roadGap(recs[i], recs[i + 1]) < 0.05) badTrunks++;
+    }
     if (badTrunks) report.push(`trees ${badTrunks}/${trunks} trunks on the carriageway`);
     if (lampInst) { let badPoles = 0;
       for (let k = 0; k < lampInst.count; k++) { lampInst.getMatrixAt(k, m); m.decompose(p, q, sc);
@@ -1034,7 +1072,7 @@ const HOUSE_SCHEMES = [
     }
   }
 
-  [...Object.values(roadInst), ...houseInst, ...houseLit, ...shopInst, awn, ...trees.flat(),
+  [...Object.values(roadInst), ...houseInst, ...houseLit, ...shopInst, awn,
    ...bushes.flat(), ...tufts.flat(), lampInst, glowInst, driveInst, poolInst]
     .forEach((i) => { if (i) { i.instanceMatrix.needsUpdate = true;
       if (i.instanceColor) i.instanceColor.needsUpdate = true; } });
@@ -1149,6 +1187,8 @@ const HOUSE_SCHEMES = [
     [19.85, 18.3], [20, 19.5], [20, 23], [20, 27], [20, 31.5],
   ].map(([x, z]) => new THREE.Vector3(gx(x), 0, gz(z))), false, "catmullrom", 0.35);
 
+  rebucketTrees();
+
   audit();
 
   /* ---- stats ---- */
@@ -1159,7 +1199,7 @@ const HOUSE_SCHEMES = [
     const g = o.geometry, n = (g.index ? g.index.count : g.attributes.position.count) / 3;
     tris += n * (o.isInstancedMesh ? o.count : 1);
   });
-  const treeCount = trees.reduce((a, g) => a + (g[0] ? g[0].count : 0), 0);
+  const treeCount = treeRecs.reduce((a, r) => a + r.length / 5, 0);
   console.log("audit-lots:", JSON.stringify(globalThis.__lotFail || {}));
   hud.innerHTML =
     `<b>town</b>  ${GRID}×${GRID} tiles · 1 tile ≈ 8 m<br>` +
@@ -1310,9 +1350,11 @@ addEventListener("resize", () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
 });
+let _frame = 0;
 (function loop() {
   const t = performance.now() / 1000;
   if (FLY.on) flyStep();
+  if (globalThis.__rebucket && ++_frame % 18 === 0) globalThis.__rebucket();
   if (FX.flies) {
     const a = FX.flies.pts.geometry.attributes.position, b = FX.flies.base, ph = FX.flies.ph;
     for (let i = 0; i < ph.length; i++) {

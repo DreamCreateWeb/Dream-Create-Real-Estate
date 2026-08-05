@@ -5,6 +5,7 @@
    THREE.Group ready to drop into a scene.
    ========================================================= */
 import * as THREE from "three";
+import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 
 /* ---------- shared material library ---------- */
 export const M = {
@@ -800,6 +801,110 @@ export async function makeTree(loadGLB, i = 0, autumn = false) {
   const leaf = autumn ? autumns[i % autumns.length] : greens[i % greens.length];
   tintByMaterial(o, { leafs: leaf, grass: leaf, wood: 0x53412f, bark: 0x53412f });
   return o;
+}
+
+/* =========================================================
+   PROCEDURAL LOD TREES
+   The kit trees are single convex hulls — fine at distance,
+   dead up close. These are built for three tiers:
+     LOD0  trunk + branches + a cluster of jittered leaf blobs
+     LOD1  trunk + a few blobs
+     LOD2  trunk stub + one blob (the far-field silhouette)
+   One merged vertex-coloured geometry per LOD, so a whole
+   species-tier is a single instanced draw call.
+   ========================================================= */
+function _hash(n) { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+
+function _blob(r, detail, cx, cy, cz, col, colTop, seed, squash = 1) {
+  const g = new THREE.IcosahedronGeometry(r, detail);
+  const pos = g.attributes.position, n = pos.count;
+  const colors = new Float32Array(n * 3);
+  const cA = new THREE.Color(col), cB = new THREE.Color(colTop), cc = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    const vx = pos.getX(i), vy = pos.getY(i), vz = pos.getZ(i);
+    // radial jitter turns the sphere into a leafy clump
+    const j = 0.82 + 0.36 * _hash(seed + vx * 5.3 + vy * 7.7 + vz * 9.1);
+    pos.setXYZ(i, vx * j, vy * j * squash, vz * j);
+    // lit from above: upper verts drift towards the lighter tone
+    const t = THREE.MathUtils.clamp(vy / r * 0.5 + 0.5, 0, 1);
+    cc.copy(cA).lerp(cB, t * t);
+    colors[i * 3] = cc.r; colors[i * 3 + 1] = cc.g; colors[i * 3 + 2] = cc.b;
+  }
+  g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  g.translate(cx, cy, cz);
+  g.computeVertexNormals();
+  return g;
+}
+
+function _limb(r0, r1, len, seg, col) {
+  // non-indexed to match the polyhedra, or mergeGeometries refuses the mix
+  const g = new THREE.CylinderGeometry(r1, r0, len, seg).toNonIndexed();
+  const n = g.attributes.position.count, colors = new Float32Array(n * 3);
+  const c = new THREE.Color(col);
+  for (let i = 0; i < n; i++) { colors[i*3] = c.r; colors[i*3+1] = c.g; colors[i*3+2] = c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  g.translate(0, len / 2, 0);
+  return g;
+}
+
+/* kind: "round" | "tall" | "pine".  Returns { lods: [g0, g1, g2] } with the
+   trunk base at y=0. Heights ~1.3-1.6 to match the kit trees it replaces. */
+export function makeTreeLOD(kind, seed, leaf, leafLight, bark) {
+  const R = (k) => _hash(seed * 17 + k);
+  const lods = [];
+  if (kind === "pine") {
+    const h = 1.35 + R(1) * 0.3;
+    for (const [detail, rings] of [[1, 4], [0, 3], [0, 1]]) {
+      const parts = [_limb(0.055, 0.028, h * 0.42, 6, bark)];
+      if (rings === 1) {
+        parts.push(_blob(0.3, 0, 0, h * 0.55, 0, leaf, leafLight, seed, 1.7));
+      } else {
+        for (let i = 0; i < rings; i++) {
+          const t = i / (rings - 1);
+          const y = h * (0.3 + 0.62 * t), r = 0.34 * (1 - t * 0.72) + 0.05;
+          parts.push(_blob(r, detail, 0, y, 0, leaf, leafLight, seed + i * 7, 0.62));
+        }
+      }
+      const g = mergeGeometries(parts); g.computeVertexNormals();
+      lods.push(g);
+    }
+    return { lods };
+  }
+  const tall = kind === "tall";
+  const h = tall ? 1.5 + R(2) * 0.25 : 1.15 + R(2) * 0.25;
+  const cy = tall ? h * 0.66 : h * 0.6;                  // canopy centre
+  const cr = tall ? 0.3 : 0.42;                          // canopy radius
+  const spread = tall ? 0.55 : 1.0;                      // blob scatter (xz)
+  const trunkTop = cy - cr * 0.3;
+  const specs = [
+    [2, 12, 0.16],                                       // LOD0: many small blobs
+    [1, 5, 0.2],                                         // LOD1: a handful
+    [0, 2, 0.3],                                         // LOD2: silhouette
+  ];
+  for (const [detail, count, rBase] of specs) {
+    const parts = [_limb(0.085, 0.05, trunkTop, 6, bark)];
+    if (detail === 2) {
+      // real branches reaching into the canopy, only at the hero tier
+      for (let b = 0; b < 3; b++) {
+        const br = _limb(0.032, 0.014, cr * 1.1, 5, bark);
+        br.rotateZ(0.6 + R(30 + b) * 0.5);
+        br.rotateY(R(40 + b) * Math.PI * 2);
+        br.translate(0, trunkTop * (0.72 + R(50 + b) * 0.2), 0);
+        parts.push(br);
+      }
+    }
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2 + R(60 + i) * 2.2;
+      const rad = count === 2 ? cr * 0.32 : cr * (0.36 + R(70 + i) * 0.52) * spread;
+      const bx = Math.cos(a) * rad, bz = Math.sin(a) * rad;
+      const by = cy + (R(80 + i) - 0.5) * cr * (tall ? 1.5 : 0.75);
+      const br2 = (count === 2 ? cr * 0.85 : cr * (0.42 + R(90 + i) * 0.28)) + rBase * 0.3;
+      parts.push(_blob(br2, detail, bx, by, bz, leaf, leafLight, seed + i * 13, tall ? 1.15 : 0.92));
+    }
+    const g = mergeGeometries(parts); g.computeVertexNormals();
+    lods.push(g);
+  }
+  return { lods };
 }
 
 export const RIGS = { towtruck, parts, clinic, houses, trees };
