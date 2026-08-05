@@ -347,14 +347,14 @@ const HOUSE_SCHEMES = [
                  s = which side (kept off the front door)                  */
   const DRIVE_SPEC = {
     a: { mode: "side", s: 1 },
-    b: { mode: "front", x: 0.55, w: 1.6 },     // lower right wing
-    c: { mode: "front", x: -0.37, w: 1.5 },    // lower left wing
+    b: { mode: "front", x: 0.545, w: 2.15 },   // the wing is a true DOUBLE garage
+    c: { mode: "front", x: -0.37, w: 1.8 },    // lower left wing
     e: { mode: "side", s: -1 },
     g: { mode: "side", s: 1 },
     h: { mode: "side", s: 1 },
     j: { mode: "garage", s: 1 },
     l: { mode: "side", s: -1 },
-    n: { mode: "front", x: 0.55, w: 1.5 },     // right wing under the awning
+    n: { mode: "front", x: 0.545, w: 1.9 },    // right wing under the awning
     q: { mode: "carport", x: -0.39, w: 1.3 },  // the car shelter is the left bay
   };
   /* measured from the door vertices: every type fronts -Z except b and j,
@@ -379,6 +379,7 @@ const HOUSE_SCHEMES = [
           const bb = inst.geometry.boundingBox;
           inst.userData.half = [Math.max(-bb.min.x, bb.max.x), Math.max(-bb.min.z, bb.max.z)];
           inst.userData.drive = DRIVE_SPEC[TYPES[ti]];
+          inst.userData.type = TYPES[ti];
           scene.add(inst); pair.push(inst);
         } catch (e) { pair.push(null); }
       }
@@ -574,7 +575,7 @@ const HOUSE_SCHEMES = [
        (lx·cos ry, -lx·sin ry).                                            */
     const spec = houseInst[idx].userData.drive || { mode: "side", s: 1 };
     if (Q.has("tlog") && spec.mode !== "side")
-      console.log("audit-place:", spec.mode, wx.toFixed(1), wz.toFixed(1), "grid", (wx / TILE + (GRID - 1) / 2).toFixed(1), (wz / TILE + (GRID - 1) / 2).toFixed(1));
+      console.log("audit-place:", houseInst[idx].userData.type, spec.mode, "grid", (wx / TILE + (GRID - 1) / 2).toFixed(1), (wz / TILE + (GRID - 1) / 2).toFixed(1));
     const hxu = houseInst[idx].userData.half[0];
     let lx, dw = 1.0, spotD = 1.02;
     let dlen = deep ? 2.95 : 2.2, dctr = deep ? 1.0 : 0.86;
@@ -585,8 +586,25 @@ const HOUSE_SCHEMES = [
       dlen += 0.75; dctr += 0.16;                 // the drive runs down the side wall
       spotD = deep ? 1.85 : 1.42;
     } else lx = (hxu * scale + 0.2) * spec.s;
+    /* the slab may only touch tarmac at its own kerb end — at corner lots a
+       side pad could land across the CROSSING street. Test the far portion;
+       side pads flip to the other boundary when blocked. */
+    const L = dlen * 0.4;
+    const clearAt = (lx2) => {
+      const ox2 = lx2 * c, oz2 = -lx2 * sn;
+      for (const dep of [0.42 + L * 0.45, 0.42 + L * 0.75, 0.42 + L]) {
+        for (const u of [-dw * 0.19, 0, dw * 0.19]) {
+          const px2 = gx(sx + dx * dep) + ox2 + along.x * (shift + u);
+          const pz2 = gz(sz + dz * dep) + oz2 + along.z * (shift + u);
+          if (roadGap(px2, pz2) < 0.04) return false;
+        }
+      }
+      return true;
+    };
+    let driveOK = clearAt(lx);
+    if (!driveOK && spec.mode === "side" && clearAt(-lx)) { lx = -lx; driveOK = true; }
     const ox = lx * c, oz = -lx * sn;
-    if (driveInst) {
+    if (driveInst && driveOK) {
       const dcx = gx(sx + dx * dctr) + ox + along.x * shift,
             dcz = gz(sz + dz * dctr) + oz + along.z * shift;
       QT.setFromAxisAngle(AX, ry);
@@ -677,7 +695,7 @@ const HOUSE_SCHEMES = [
         const nAwn = Math.max(1, Math.round(hw * 2 / 0.95));
         for (let k = 0; k < nAwn; k++) {
           const oz = (k - (nAwn - 1) / 2) * (hw * 2 / nAwn);
-          push(awn, gx(cx - side * hd), 0.24, gz(cz) + oz, ry + Math.PI, 0.85);
+          push(awn, gx(cx - side * hd), 0, gz(cz) + oz, ry + Math.PI, 1);
         }
       }
       for (let t = Math.floor(z); t <= Math.ceil(z + hw * 2); t++) { claim(SPINE + side, t); claim(SPINE + side * 2, t); }
@@ -801,7 +819,14 @@ const HOUSE_SCHEMES = [
         const x = Math.round(p.x / TILE + (GRID - 1) / 2), z = Math.round(p.z / TILE + (GRID - 1) / 2);
         const vertical = R(x, z - 1) || R(x, z + 1);
         if (Math.abs(vertical ? p.x - gx(x) : p.z - gz(z)) < 0.4) badPoles++; }
-      if (badPoles) report.push(`lamps ${badPoles}/${lampInst.count} poles in the lane`); }
+      if (badPoles) report.push(`lamps ${badPoles}/${lampInst.count} poles in the lane`);
+      let jn = 0;
+      for (let k = 0; k < lampInst.count; k++) {
+        lampInst.getMatrixAt(k, m); m.decompose(p, q, sc);
+        const x = Math.round(p.x / TILE + (GRID - 1) / 2), z = Math.round(p.z / TILE + (GRID - 1) / 2);
+        if ((R(x, z - 1) || R(x, z + 1)) && (R(x + 1, z) || R(x - 1, z))) jn++;
+      }
+      if (jn) report.push(`lamps ${jn} standing on junction tiles`); }
     /* orientation: fronts are -Z after normalisation, so every instance's
        front sample point must sit nearer the carriageway than its back.
        This is the check that would have caught the backwards lamps and
@@ -986,6 +1011,9 @@ const HOUSE_SCHEMES = [
 
   for (let z = 0; z < GRID; z++) for (let x = 0; x < GRID; x++) {
     if (!road[z][x]) continue;
+    /* junction tiles carry BOTH streets — a lamp offset off one centreline
+       stands in the middle of the other. No lamps at junctions. */
+    if ((R(x, z - 1) || R(x, z + 1)) && (R(x + 1, z) || R(x - 1, z))) continue;
     const vertical = R(x, z - 1) || R(x, z + 1);
     const step = vertical ? z : x;
     if (step % 4) continue;
